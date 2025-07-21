@@ -1,0 +1,938 @@
+<script type="text/javascript">
+        var gk_isXlsx = false;
+        var gk_xlsxFileLookup = {};
+        var gk_fileData = {};
+        function filledCell(cell) {
+          return cell !== '' && cell != null;
+        }
+        function loadFileData(filename) {
+        if (gk_isXlsx && gk_xlsxFileLookup[filename]) {
+            try {
+                var workbook = XLSX.read(gk_fileData[filename], { type: 'base64' });
+                var firstSheetName = workbook.SheetNames[0];
+                var worksheet = workbook.Sheets[firstSheetName];
+
+                // Convert sheet to JSON to filter blank rows
+                var jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, blankrows: false, defval: '' });
+                // Filter out blank rows (rows where all cells are empty, null, or undefined)
+                var filteredData = jsonData.filter(row => row.some(filledCell));
+
+                // Heuristic to find the header row by ignoring rows with fewer filled cells than the next row
+                var headerRowIndex = filteredData.findIndex((row, index) =>
+                  row.filter(filledCell).length >= filteredData[index + 1]?.filter(filledCell).length
+                );
+                // Fallback
+                if (headerRowIndex === -1 || headerRowIndex > 25) {
+                  headerRowIndex = 0;
+                }
+
+                // Convert filtered JSON back to CSV
+                var csv = XLSX.utils.aoa_to_sheet(filteredData.slice(headerRowIndex)); // Create a new sheet from filtered array of arrays
+                csv = XLSX.utils.sheet_to_csv(csv, { header: 1 });
+                return csv;
+            } catch (e) {
+                console.error(e);
+                return "";
+            }
+        }
+        return gk_fileData[filename] || "";
+        }
+        </script><!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>DPyLearn - Chapter 3: Input, Output, Operators, Conditionals, and Loops</title>
+  <meta name="description" content="Learn Python input/output, operators, conditionals, and loops in DPyLearn’s Chapter 3. Build mini-projects and test your skills with a quiz.">
+  <meta name="keywords" content="Python input/output, Python operators, conditionals, loops, DPyLearn">
+  <meta name="author" content="Dharmik">
+  <meta property="og:title" content="DPyLearn - Chapter 3: Input, Output, Operators, Conditionals, and Loops">
+  <meta property="og:description" content="Master Python basics like input/output, operators, conditionals, and loops with hands-on projects and a quiz.">
+  <meta property="og:image" content="">
+  <meta property="og:url" content="https://yourusername.github.io/DPyLearn/chapter3.html">
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "Course",
+    "name": "DPyLearn Chapter 3: Input, Output, Operators, Conditionals, and Loops",
+    "description": "Learn how to handle input/output, use operators, control program flow with conditionals, and repeat tasks with loops in Python.",
+    "provider": {
+      "@type": "Organization",
+      "name": "DPyLearn"
+    }
+  }
+  </script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+  <style>
+    body { 
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; 
+      transition: background-color 0.3s ease, color 0.3s ease; 
+    }
+    .light { background-color: #ffffff; color: #1f2937; }
+    .dark { background-color: #0d1117; color: #e6edf3; }
+    .navbar { 
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1); 
+      background: #f3f4f6; 
+    }
+    .dark .navbar { background: #1a1f2e; }
+    .hero { min-height: 600px; }
+    .light .hero { background-color: #f9fafb; }
+    .dark .hero { background-color: #1a1f2e; }
+    .btn { 
+      transition: transform 0.3s ease, background-color 0.3s ease, box-shadow 0.3s ease; 
+      border-radius: 0.5rem; 
+    }
+    .btn:hover { transform: scale(1.05); box-shadow: 0 4px 12px rgba(0,0,0,0.2); }
+    .btn:focus { outline: none; box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.5); }
+    .error { color: #ef4444; text-align: center; padding: 20px; }
+    .success { color: #10b981; text-align: center; padding: 10px; }
+    .spinner { 
+      border: 4px solid #f3f3f3; 
+      border-top: 4px solid #2563eb; 
+      border-radius: 50%; 
+      width: 24px; 
+      height: 24px; 
+      animation: spin 1s linear infinite; 
+    }
+    .dark .spinner { border: 4px solid #4b5563; border-top: 4px solid #60a5fa; }
+    @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    .modal { 
+      animation: fadeIn 0.3s ease; 
+      border-radius: 0.5rem; 
+      box-shadow: 0 4px 16px rgba(0,0,0,0.3); 
+    }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
+    .theme-toggle { position: fixed; bottom: 20px; right: 20px; z-index: 50; }
+    .sun-icon { width: 24px; height: 24px; }
+    .input-field { 
+      transition: border-color 0.3s ease, box-shadow 0.3s ease; 
+      border-radius: 0.375rem; 
+    }
+    .input-field:focus { 
+      outline: none; 
+      border-color: #2563eb; 
+      box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.5); 
+    }
+    .avatar { 
+      width: 40px; 
+      height: 40px; 
+      border-radius: 50%; 
+      display: flex; 
+      align-items: center; 
+      justify-content: center; 
+      font-weight: bold; 
+      font-size: 1.1rem; 
+      transition: background-color 0.3s ease, color 0.3s ease; 
+    }
+    .light .avatar { background: #2563eb; color: #ffffff; }
+    .dark .avatar { background: #60a5fa; color: #0d1117; }
+    .light .modal { background: #ffffff; }
+    .dark .modal { background: #2d3748; }
+    .light .input-field { background: #f9fafb; border-color: #d1d5db; }
+    .dark .input-field { background: #4b5563; border-color: #6b7280; }
+    .user-menu { 
+      background: #ffffff; 
+      border: 1px solid #e5e7eb; 
+      border-radius: 0.5rem; 
+      box-shadow: 0 4px 12px rgba(0,0,0,0.2); 
+    }
+    .dark .user-menu { 
+      background: #1f2937; 
+      border: 1px solid #374151; 
+    }
+    .light .user-menu p, .light .user-menu a, .light .user-menu h4 { color: #1f2937; }
+    .dark .user-menu p, .dark .user-menu a, .dark .user-menu h4 { color: #e6edf3; }
+    .light .user-menu a:hover { color: #2563eb; }
+    .dark .user-menu a:hover { color: #60a5fa; }
+    .code-block { 
+      background: #f9fafb; 
+      border-radius: 0.5rem; 
+      padding: 1rem; 
+      font-family: 'Courier New', Courier, monospace; 
+      font-size: 0.9rem; 
+      white-space: pre-wrap; 
+      overflow-x: auto; 
+    }
+    .dark .code-block { background: #2d3748; }
+    .copy-btn { 
+      font-size: 0.8rem; 
+      padding: 0.25rem 0.5rem; 
+      margin-left: 0.5rem; 
+    }
+    .quiz-option { 
+      transition: background-color 0.3s ease; 
+      border-radius: 0.375rem; 
+      padding: 0.5rem; 
+    }
+    .quiz-option:hover { 
+      background-color: #e5e7eb; 
+    }
+    .dark .quiz-option:hover { 
+      background-color: #4b5563; 
+    }
+    @media (max-width: 640px) { 
+      .hero { min-height: 500px; } 
+      .text-5xl { font-size: 2.5rem; } 
+      .text-3xl { font-size: 1.75rem; } 
+      .text-xl { font-size: 1.125rem; } 
+      .px-6 { padding-left: 1rem; padding-right: 1rem; } 
+    }
+  </style>
+</head>
+<body className="dark">
+  <div id="root"></div>
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-app.js";
+    import { getAuth, signOut } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-auth.js";
+    import { getFirestore, doc, getDoc, setDoc, collection, addDoc, serverTimestamp, getDocs } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-firestore.js";
+
+    // Firebase configuration
+    const firebaseConfig = {
+      apiKey: "AIzaSyADcAkqXqSZ_crzAaMCNu6IWUYQS5ZWrIY",
+      authDomain: "sign-up-login-d1723.firebaseapp.com",
+      projectId: "sign-up-login-d1723",
+      storageBucket: "sign-up-login-d1723.firebasestorage.app",
+      messagingSenderId: "94024367004",
+      appId: "1:94024367004:web:b0c513729231a06da3a659",
+      measurementId: "G-XKX2CPZMQE"
+    };
+
+    let auth, db;
+    try {
+      const app = initializeApp(firebaseConfig);
+      auth = getAuth(app);
+      db = getFirestore(app);
+    } catch (e) {
+      console.error('Firebase initialization error:', e);
+      document.getElementById('root').innerHTML = '<div class="error">Error initializing Firebase: ' + e.message + '. Please check the console.</div>';
+    }
+
+    const { useState, useEffect } = React;
+
+    const Chapter3 = () => {
+      const [user, setUser] = useState(null);
+      const [showFeedback, setShowFeedback] = useState(false);
+      const [feedback, setFeedback] = useState('');
+      const [feedbackMessage, setFeedbackMessage] = useState('');
+      const [loading, setLoading] = useState(false);
+      const [theme, setTheme] = useState(localStorage.getItem('theme') || 'system');
+      const [showUserMenu, setShowUserMenu] = useState(false);
+      const [firstName, setFirstName] = useState('');
+      const [middleName, setMiddleName] = useState('');
+      const [lastName, setLastName] = useState('');
+      const [quizAnswers, setQuizAnswers] = useState({});
+      const [quizSubmitted, setQuizSubmitted] = useState(false);
+      const [quizScore, setQuizScore] = useState(null);
+      const [copyMessage, setCopyMessage] = useState('');
+
+      useEffect(() => {
+        // Apply theme
+        const applyTheme = () => {
+          const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+          document.body.className = theme === 'system' ? (prefersDark ? 'dark' : 'light') : theme;
+          localStorage.setItem('theme', theme);
+        };
+        applyTheme();
+
+        // System theme listener
+        const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+        const handleSystemThemeChange = (e) => {
+          if (theme === 'system') {
+            document.body.className = e.matches ? 'dark' : 'light';
+          }
+        };
+        mediaQuery.addEventListener('change', handleSystemThemeChange);
+
+        // Firebase auth state
+        if (auth && db) {
+          const unsubscribe = auth.onAuthStateChanged(async (user) => {
+            console.log("Auth state changed:", user);
+            if (user) {
+              setUser(user);
+              try {
+                const userDocRef = doc(db, 'users', user.uid);
+                const userDoc = await getDoc(userDocRef);
+                if (userDoc.exists()) {
+                  const data = userDoc.data();
+                  setFirstName(data.firstName || '');
+                  setMiddleName(data.middleName || '');
+                  setLastName(data.lastName || '');
+                }
+              } catch (e) {
+                console.error('Error fetching user data:', e);
+                setFeedbackMessage(`Error loading user data: ${e.message}`);
+              }
+            } else {
+              setFeedbackMessage('Please sign in to access this chapter.');
+              setTimeout(() => window.location.href = './index.html', 2000);
+            }
+          });
+          return () => {
+            unsubscribe();
+            mediaQuery.removeEventListener('change', handleSystemThemeChange);
+          };
+        } else {
+          setFeedbackMessage('Firebase not available. Redirecting to home page.');
+          setTimeout(() => window.location.href = './index.html', 2000);
+        }
+      }, [theme]);
+
+      const toggleTheme = () => {
+        const themes = ['light', 'dark', 'system'];
+        const currentIndex = themes.indexOf(theme);
+        const nextTheme = themes[(currentIndex + 1) % themes.length];
+        setTheme(nextTheme);
+      };
+
+      const signOutUser = () => {
+        if (!auth) {
+          setFeedbackMessage('Sign-out unavailable: Firebase not configured.');
+          return;
+        }
+        setLoading(true);
+        signOut(auth)
+          .then(() => {
+            setUser(null);
+            setFirstName('');
+            setMiddleName('');
+            setLastName('');
+            setFeedbackMessage('Signed out successfully.');
+            setTimeout(() => window.location.href = './index.html', 2000);
+            setShowUserMenu(false);
+            setLoading(false);
+          })
+          .catch((error) => {
+            console.error('Sign-out error:', error.code, error.message);
+            setFeedbackMessage(`Error signing out: ${error.message}`);
+            setLoading(false);
+          });
+      };
+
+      const saveFeedback = async () => {
+        setLoading(true);
+        try {
+          if (user && auth && db) {
+            await addDoc(collection(db, 'users', user.uid, 'feedbacks'), {
+              id: Date.now(),
+              text: feedback,
+              chapter: 'Chapter 3',
+              timestamp: serverTimestamp()
+            });
+            setFeedbackMessage('Feedback saved to your account!');
+          } else {
+            let feedbacks = JSON.parse(localStorage.getItem('feedbacks') || '[]');
+            feedbacks.push({ id: Date.now(), text: feedback, chapter: 'Chapter 3' });
+            localStorage.setItem('feedbacks', JSON.stringify(feedbacks));
+            setFeedbackMessage('Feedback saved! Check Developer Tools → Application → Local Storage.');
+          }
+          setFeedback('');
+          setTimeout(() => setFeedbackMessage(''), 3000);
+          setShowFeedback(false);
+          setLoading(false);
+        } catch (e) {
+          console.error('Feedback save error:', e);
+          setFeedbackMessage(`Error saving feedback: ${e.message}`);
+          setLoading(false);
+        }
+      };
+
+      const exportFeedback = async () => {
+        setLoading(true);
+        try {
+          let feedbacks = [];
+          if (user && auth && db) {
+            const snapshot = await getDocs(collection(db, 'users', user.uid, 'feedbacks'));
+            feedbacks = snapshot.docs.map(doc => doc.data());
+          } else {
+            feedbacks = JSON.parse(localStorage.getItem('feedbacks') || '[]');
+          }
+          const blob = new Blob([JSON.stringify(feedbacks, null, 2)], { type: 'application/json' });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = 'feedback.json';
+          a.click();
+          URL.revokeObjectURL(url);
+          setFeedbackMessage('Feedback exported as feedback.json!');
+          setTimeout(() => setFeedbackMessage(''), 3000);
+          setLoading(false);
+        } catch (e) {
+          console.error('Feedback export error:', e);
+          setFeedbackMessage(`Error exporting feedback: ${e.message}`);
+          setLoading(false);
+        }
+      };
+
+      const copyCode = (code) => {
+        navigator.clipboard.writeText(code).then(() => {
+          setCopyMessage('Code copied!');
+          setTimeout(() => setCopyMessage(''), 3000);
+        }).catch((err) => {
+          console.error('Copy error:', err);
+          setCopyMessage('Failed to copy code.');
+        });
+      };
+
+      const quizQuestions = [
+        {
+          id: 1,
+          question: 'What does the following code print: print(f"Hi, {name}") if name = "Dharmik"?',
+          options: ['Hi, name', 'Hi, Dharmik', 'Error', 'name'],
+          correct: 'Hi, Dharmik'
+        },
+        {
+          id: 2,
+          question: 'Which operator checks if two values are equal?',
+          options: ['=', '==', '!=', '>='],
+          correct: '=='
+        },
+        {
+          id: 3,
+          question: 'What does a `break` statement do in a loop?',
+          options: ['Skips the current iteration', 'Exits the loop entirely', 'Restarts the loop', 'Pauses the loop'],
+          correct: 'Exits the loop entirely'
+        }
+      ];
+
+      const handleQuizSubmit = async () => {
+        let score = 0;
+        quizQuestions.forEach(q => {
+          if (quizAnswers[q.id] === q.correct) score++;
+        });
+        const percentage = (score / quizQuestions.length) * 100;
+        setQuizScore(percentage);
+        setQuizSubmitted(true);
+
+        try {
+          if (user && auth && db) {
+            const userDocRef = doc(db, 'users', user.uid);
+            const userDoc = await getDoc(userDocRef);
+            const quizScores = userDoc.exists() ? (userDoc.data().quizScores || {}) : {};
+            quizScores['3'] = percentage;
+            await setDoc(userDocRef, { quizScores }, { merge: true });
+            setFeedbackMessage(`Quiz submitted! You scored ${score}/${quizQuestions.length} (${percentage}%).`);
+          } else {
+            const savedScores = JSON.parse(localStorage.getItem('quizScores') || '{}');
+            savedScores['3'] = percentage;
+            localStorage.setItem('quizScores', JSON.stringify(savedScores));
+            setFeedbackMessage(`Quiz submitted! You scored ${score}/${quizQuestions.length} (${percentage}%). Saved to local storage.`);
+          }
+          setTimeout(() => setFeedbackMessage(''), 3000);
+        } catch (e) {
+          console.error('Quiz save error:', e);
+          setFeedbackMessage(`Error saving quiz score: ${e.message}`);
+        }
+      };
+
+      const getInitials = () => {
+        if (!firstName || !lastName) return 'U';
+        return `${firstName[0]}${lastName[0]}`.toUpperCase();
+      };
+
+      try {
+        return React.createElement(
+          'div',
+          { className: 'min-h-screen flex flex-col' },
+          [
+            // Navbar
+            React.createElement(
+              'nav',
+              { className: 'navbar py-4 px-6 flex justify-between items-center sticky top-0 z-10' },
+              [
+                React.createElement('a', { href: './index.html', className: 'text-2xl font-bold' }, 'DPyLearn'),
+                user && React.createElement(
+                  'div',
+                  { className: 'relative' },
+                  [
+                    React.createElement('button', {
+                      className: 'avatar',
+                      onClick: () => setShowUserMenu(!showUserMenu)
+                    }, getInitials()),
+                    showUserMenu && React.createElement(
+                      'div',
+                      { className: 'user-menu absolute right-0 mt-2 rounded-lg p-4 w-80' },
+                      [
+                        React.createElement('p', { className: 'text-sm font-semibold' }, `${firstName}${middleName ? ' ' + middleName : ''} ${lastName}`),
+                        React.createElement('p', { className: 'text-sm mt-1' }, user.email),
+                        React.createElement('button', {
+                          className: 'btn bg-blue-600 hover:bg-blue-700 text-white py-1 px-2 w-full mt-2 flex items-center justify-center',
+                          onClick: () => setShowFeedback(true)
+                        }, 'Submit Feedback'),
+                        React.createElement('button', {
+                          className: 'btn bg-red-600 hover:bg-red-700 text-white py-1 px-2 w-full mt-2 flex items-center justify-center',
+                          onClick: signOutUser
+                        }, [
+                          'Sign Out',
+                          loading && React.createElement('span', { className: 'spinner ml-2' })
+                        ])
+                      ]
+                    )
+                  ]
+                )
+              ]
+            ),
+            // Feedback Form
+            showFeedback && React.createElement(
+              'div',
+              { className: 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-20', onClick: () => setShowFeedback(false) },
+              React.createElement(
+                'div',
+                { className: 'modal p-6 max-w-md w-full', onClick: e => e.stopPropagation() },
+                [
+                  React.createElement('h3', { className: 'text-xl font-semibold mb-4 text-center' }, 'Submit Feedback'),
+                  React.createElement('textarea', {
+                    className: 'w-full p-2 mb-4 bg-gray-100 dark:bg-gray-800 rounded border border-gray-300 dark:border-gray-600',
+                    rows: 4,
+                    placeholder: 'Your feedback for Chapter 3...',
+                    value: feedback,
+                    onChange: e => setFeedback(e.target.value)
+                  }),
+                  React.createElement(
+                    'div',
+                    { className: 'flex justify-end space-x-2' },
+                    [
+                      React.createElement('button', {
+                        className: 'btn bg-gray-600 hover:bg-gray-700 text-white py-2 px-4 rounded flex items-center',
+                        onClick: () => setShowFeedback(false)
+                      }, 'Cancel'),
+                      React.createElement('button', {
+                        className: 'btn bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded flex items-center',
+                        onClick: saveFeedback
+                      }, [
+                        'Submit',
+                        loading && React.createElement('span', { className: 'spinner ml-2' })
+                      ]),
+                      React.createElement('button', {
+                        className: 'btn bg-green-600 hover:bg-green-700 text-white py-2 px-4 rounded flex items-center',
+                        onClick: exportFeedback
+                      }, [
+                        'Export Feedback',
+                        loading && React.createElement('span', { className: 'spinner ml-2' })
+                      ])
+                    ]
+                  ),
+                  feedbackMessage && React.createElement('p', { className: feedbackMessage.includes('Error') ? 'error mt-2' : 'success mt-2' }, feedbackMessage)
+                ]
+              )
+            ),
+            // Theme Toggle
+            React.createElement(
+              'div',
+              { className: 'theme-toggle' },
+              React.createElement('button', {
+                className: 'p-2 rounded-full bg-transparent',
+                onClick: toggleTheme
+              }, [
+                React.createElement('svg', {
+                  className: 'sun-icon',
+                  viewBox: '0 0 24 24',
+                  fill: 'none',
+                  stroke: theme === 'light' ? '#1f2937' : '#e6edf3',
+                  strokeWidth: '2'
+                }, [
+                  React.createElement('circle', { cx: '12', cy: '12', r: '5' }),
+                  React.createElement('line', { x1: '12', y1: '1', x2: '12', y2: '3' }),
+                  React.createElement('line', { x1: '12', y1: '21', x2: '12', y2: '23' }),
+                  React.createElement('line', { x1: '4.22', y1: '4.22', x2: '5.64', y2: '5.64' }),
+                  React.createElement('line', { x1: '18.36', y1: '18.36', x2: '19.78', y2: '19.78' }),
+                  React.createElement('line', { x1: '1', y1: '12', x2: '3', y2: '12' }),
+                  React.createElement('line', { x1: '21', y1: '12', x2: '23', y2: '12' }),
+                  React.createElement('line', { x1: '4.22', y1: '19.78', x2: '5.64', y2: '18.36' }),
+                  React.createElement('line', { x1: '18.36', y1: '5.64', x2: '19.78', y2: '4.22' })
+                ])
+              ])
+            ),
+            // Main Content
+            user ? React.createElement(
+              'div',
+              { className: 'hero flex flex-col items-center py-16 px-6 max-w-4xl mx-auto' },
+              [
+                React.createElement('h2', { className: 'text-5xl font-extrabold mb-8 sm:text-4xl text-center' }, 'Chapter 3: Input, Output, Operators, Conditionals, and Loops'),
+                React.createElement('p', { className: 'text-xl mb-8 text-gray-600 dark:text-gray-300 text-center' }, 'Welcome to Chapter 3 of DPyLearn! You’re about to level up your Python skills by learning how to take user input, perform calculations with operators, make decisions with conditionals, and repeat tasks with loops. We’ll build three fun mini-projects and test your knowledge with a quiz. Let’s dive in!'),
+                // Input and Output
+                React.createElement('h3', { className: 'text-3xl font-semibold mt-12 mb-4' }, 'Input and Output'),
+                React.createElement('p', { className: 'text-lg mb-6 text-gray-600 dark:text-gray-300' }, 'Python makes it easy to interact with users through input and output. The `input()` function lets you ask the user for data, and `print()` displays information on the screen. You can make your output fancy with f-strings, which let you embed variables directly in text. Here’s an example:'),
+                React.createElement('div', { className: 'flex items-start mb-6' }, [
+                  React.createElement('pre', { className: 'code-block' }, 'name = input("Enter your name: ")\nprint(f"Welcome, {name}!")'),
+                  React.createElement('button', {
+                    className: 'btn bg-gray-600 hover:bg-gray-700 text-white copy-btn',
+                    onClick: () => copyCode('name = input("Enter your name: ")\nprint(f"Welcome, {name}!")')
+                  }, 'Copy Code')
+                ]),
+                React.createElement('p', { className: 'text-lg mb-6 text-gray-600 dark:text-gray-300' }, 'In this code, `input("Enter your name: ")` shows a prompt and stores the user’s response in `name`. The f-string `f"Welcome, {name}!"` inserts the value of `name` into the output. Try it in VS Code—type your name and see the greeting! Note: `input()` always returns a string, so convert it with `int()` or `float()` for numbers.'),
+                // Basic Operators
+                React.createElement('h3', { className: 'text-3xl font-semibold mt-12 mb-4' }, 'Basic Operators'),
+                React.createElement('p', { className: 'text-lg mb-6 text-gray-600 dark:text-gray-300' }, 'Operators are the tools for doing math, comparisons, and logic in Python. Here are the main types you’ll use:'),
+                React.createElement('h4', { className: 'text-2xl font-semibold mt-8 mb-4' }, 'Arithmetic Operators'),
+                React.createElement('p', { className: 'text-lg mb-4 text-gray-600 dark:text-gray-300' }, 'These handle math operations:'),
+                React.createElement('ul', { className: 'list-disc list-inside mb-6 text-lg text-gray-600 dark:text-gray-300' }, [
+                  React.createElement('li', {}, '`+` (addition), `-` (subtraction), `*` (multiplication), `/` (division)'),
+                  React.createElement('li', {}, '`//` (floor division, rounds down to integer), `%` (modulus, remainder), `**` (exponentiation)')
+                ]),
+                React.createElement('div', { className: 'flex items-start mb-6' }, [
+                  React.createElement('pre', { className: 'code-block' }, 'x = 10\ny = 3\nprint(x + y)  # 13\nprint(x // y)  # 3\nprint(x % y)   # 1\nprint(x ** 2)  # 100'),
+                  React.createElement('button', {
+                    className: 'btn bg-gray-600 hover:bg-gray-700 text-white copy-btn',
+                    onClick: () => copyCode('x = 10\ny = 3\nprint(x + y)  # 13\nprint(x // y)  # 3\nprint(x % y)   # 1\nprint(x ** 2)  # 100')
+                  }, 'Copy Code')
+                ]),
+                React.createElement('h4', { className: 'text-2xl font-semibold mt-8 mb-4' }, 'Comparison Operators'),
+                React.createElement('p', { className: 'text-lg mb-4 text-gray-600 dark:text-gray-300' }, 'These compare values and return `True` or `False`:'),
+                React.createElement('ul', { className: 'list-disc list-inside mb-6 text-lg text-gray-600 dark:text-gray-300' }, [
+                  React.createElement('li', {}, '`==` (equal), `!=` (not equal), `>` (greater than), `<` (less than), `>=`, `<=`')
+                ]),
+                React.createElement('div', { className: 'flex items-start mb-6' }, [
+                  React.createElement('pre', { className: 'code-block' }, 'a = 5\nb = 10\nprint(a == b)  # False\nprint(a < b)   # True'),
+                  React.createElement('button', {
+                    className: 'btn bg-gray-600 hover:bg-gray-700 text-white copy-btn',
+                    onClick: () => copyCode('a = 5\nb = 10\nprint(a == b)  # False\nprint(a < b)   # True')
+                  }, 'Copy Code')
+                ]),
+                React.createElement('h4', { className: 'text-2xl font-semibold mt-8 mb-4' }, 'Assignment Operators'),
+                React.createElement('p', { className: 'text-lg mb-4 text-gray-600 dark:text-gray-300' }, 'These assign or update values:'),
+                React.createElement('ul', { className: 'list-disc list-inside mb-6 text-lg text-gray-600 dark:text-gray-300' }, [
+                  React.createElement('li', {}, '`=` (assign), `+=` (add and assign), `-=`, `*=`, `/=`, etc.')
+                ]),
+                React.createElement('div', { className: 'flex items-start mb-6' }, [
+                  React.createElement('pre', { className: 'code-block' }, 'x = 5\nx += 3  # x is now 8\nprint(x)'),
+                  React.createElement('button', {
+                    className: 'btn bg-gray-600 hover:bg-gray-700 text-white copy-btn',
+                    onClick: () => copyCode('x = 5\nx += 3  # x is now 8\nprint(x)')
+                  }, 'Copy Code')
+                ]),
+                React.createElement('h4', { className: 'text-2xl font-semibold mt-8 mb-4' }, 'Logical Operators'),
+                React.createElement('p', { className: 'text-lg mb-4 text-gray-600 dark:text-gray-300' }, 'These combine conditions:'),
+                React.createElement('ul', { className: 'list-disc list-inside mb-6 text-lg text-gray-600 dark:text-gray-300' }, [
+                  React.createElement('li', {}, '`and` (both true), `or` (either true), `not` (inverts truth)')
+                ]),
+                React.createElement('div', { className: 'flex items-start mb-6' }, [
+                  React.createElement('pre', { className: 'code-block' }, 'x = 7\nprint(x > 5 and x < 10)  # True\nprint(not x > 5)         # False'),
+                  React.createElement('button', {
+                    className: 'btn bg-gray-600 hover:bg-gray-700 text-white copy-btn',
+                    onClick: () => copyCode('x = 7\nprint(x > 5 and x < 10)  # True\nprint(not x > 5)         # False')
+                  }, 'Copy Code')
+                ]),
+                // Conditional Statements
+                React.createElement('h3', { className: 'text-3xl font-semibold mt-12 mb-4' }, 'Conditional Statements'),
+                React.createElement('p', { className: 'text-lg mb-6 text-gray-600 dark:text-gray-300' }, 'Conditional statements let your program make decisions using `if`, `elif`, and `else`. They check conditions and run code blocks based on whether those conditions are `True`. You can nest conditions or combine them with logical operators. Here’s an example:'),
+                React.createElement('div', { className: 'flex items-start mb-6' }, [
+                  React.createElement('pre', { className: 'code-block' }, 
+                    'age = int(input("Enter your age: "))\n' +
+                    'if age >= 18:\n' +
+                    '    print("You can vote!")\n' +
+                    'elif age >= 16:\n' +
+                    '    print("You can drive!")\n' +
+                    'else:\n' +
+                    '    print("You\'re too young for voting or driving.")'
+                  ),
+                  React.createElement('button', {
+                    className: 'btn bg-gray-600 hover:bg-gray-700 text-white copy-btn',
+                    onClick: () => copyCode(
+                      'age = int(input("Enter your age: "))\n' +
+                      'if age >= 18:\n' +
+                      '    print("You can vote!")\n' +
+                      'elif age >= 16:\n' +
+                      '    print("You can drive!")\n' +
+                      'else:\n' +
+                      '    print("You\'re too young for voting or driving.")'
+                    )
+                  }, 'Copy Code')
+                ]),
+                React.createElement('p', { className: 'text-lg mb-6 text-gray-600 dark:text-gray-300' }, 'This code checks the user’s age and prints a message based on conditions. You can nest `if` statements for more complex logic, like this:'),
+                React.createElement('div', { className: 'flex items-start mb-6' }, [
+                  React.createElement('pre', { className: 'code-block' }, 
+                    'score = int(input("Enter your score: "))\n' +
+                    'if score >= 60:\n' +
+                    '    if score >= 90:\n' +
+                    '        print("A grade!")\n' +
+                    '    else:\n' +
+                    '        print("Passing, but not an A.")\n' +
+                    'else:\n' +
+                    '    print("Failing score.")'
+                  ),
+                  React.createElement('button', {
+                    className: 'btn bg-gray-600 hover:bg-gray-700 text-white copy-btn',
+                    onClick: () => copyCode(
+                      'score = int(input("Enter your score: "))\n' +
+                      'if score >= 60:\n' +
+                      '    if score >= 90:\n' +
+                      '        print("A grade!")\n' +
+                      '    else:\n' +
+                      '        print("Passing, but not an A.")\n' +
+                      'else:\n' +
+                      '    print("Failing score.")'
+                    )
+                  }, 'Copy Code')
+                ]),
+                // Loops: while and for
+                React.createElement('h3', { className: 'text-3xl font-semibold mt-12 mb-4' }, 'Loops: while and for'),
+                React.createElement('p', { className: 'text-lg mb-6 text-gray-600 dark:text-gray-300' }, 'Loops let you repeat tasks. Python has two main types: `while` (repeats while a condition is true) and `for` (repeats over a sequence). You can control loops with `break` (exit) and `continue` (skip to next iteration).'),
+                React.createElement('h4', { className: 'text-2xl font-semibold mt-8 mb-4' }, 'While Loops'),
+                React.createElement('p', { className: 'text-lg mb-4 text-gray-600 dark:text-gray-300' }, 'A `while` loop runs as long as a condition is true. Example:'),
+                React.createElement('div', { className: 'flex items-start mb-6' }, [
+                  React.createElement('pre', { className: 'code-block' }, 
+                    'count = 1\n' +
+                    'while count <= 5:\n' +
+                    '    print(f"Count: {count}")\n' +
+                    '    count += 1'
+                  ),
+                  React.createElement('button', {
+                    className: 'btn bg-gray-600 hover:bg-gray-700 text-white copy-btn',
+                    onClick: () => copyCode(
+                      'count = 1\n' +
+                      'while count <= 5:\n' +
+                      '    print(f"Count: {count}")\n' +
+                      '    count += 1'
+                    )
+                  }, 'Copy Code')
+                ]),
+                React.createElement('p', { className: 'text-lg mb-6 text-gray-600 dark:text-gray-300' }, 'This prints “Count: 1” to “Count: 5”. Use `break` to exit early or `continue` to skip an iteration:'),
+                React.createElement('div', { className: 'flex items-start mb-6' }, [
+                  React.createElement('pre', { className: 'code-block' }, 
+                    'num = 0\n' +
+                    'while num < 10:\n' +
+                    '    num += 1\n' +
+                    '    if num == 5:\n' +
+                    '        continue\n' +
+                    '    if num == 8:\n' +
+                    '        break\n' +
+                    '    print(num)'
+                  ),
+                  React.createElement('button', {
+                    className: 'btn bg-gray-600 hover:bg-gray-700 text-white copy-btn',
+                    onClick: () => copyCode(
+                      'num = 0\n' +
+                      'while num < 10:\n' +
+                      '    num += 1\n' +
+                      '    if num == 5:\n' +
+                      '        continue\n' +
+                      '    if num == 8:\n' +
+                      '        break\n' +
+                      '    print(num)'
+                    )
+                  }, 'Copy Code')
+                ]),
+                React.createElement('p', { className: 'text-lg mb-6 text-gray-600 dark:text-gray-300' }, 'This skips 5 and stops at 8, printing 1, 2, 3, 4, 6, 7.'),
+                React.createElement('h4', { className: 'text-2xl font-semibold mt-8 mb-4' }, 'For Loops'),
+                React.createElement('p', { className: 'text-lg mb-4 text-gray-600 dark:text-gray-300' }, 'A `for` loop iterates over a sequence (like a list or `range()`). Example:'),
+                React.createElement('div', { className: 'flex items-start mb-6' }, [
+                  React.createElement('pre', { className: 'code-block' }, 
+                    'for i in range(1, 6):\n' +
+                    '    print(f"Number: {i}")'
+                  ),
+                  React.createElement('button', {
+                    className: 'btn bg-gray-600 hover:bg-gray-700 text-white copy-btn',
+                    onClick: () => copyCode(
+                      'for i in range(1, 6):\n' +
+                      '    print(f"Number: {i}")'
+                    )
+                  }, 'Copy Code')
+                ]),
+                React.createElement('p', { className: 'text-lg mb-6 text-gray-600 dark:text-gray-300' }, '`range(1, 6)` generates numbers 1 to 5. You can also loop over lists:'),
+                React.createElement('div', { className: 'flex items-start mb-6' }, [
+                  React.createElement('pre', { className: 'code-block' }, 
+                    'fruits = ["apple", "banana", "orange"]\n' +
+                    'for fruit in fruits:\n' +
+                    '    print(fruit)'
+                  ),
+                  React.createElement('button', {
+                    className: 'btn bg-gray-600 hover:bg-gray-700 text-white copy-btn',
+                    onClick: () => copyCode(
+                      'fruits = ["apple", "banana", "orange"]\n' +
+                      'for fruit in fruits:\n' +
+                      '    print(fruit)'
+                    )
+                  }, 'Copy Code')
+                ]),
+                // Mini-Project 1: Grade Calculator
+                React.createElement('h3', { className: 'text-3xl font-semibold mt-12 mb-4' }, 'Mini-Project 1: Grade Calculator'),
+                React.createElement('p', { className: 'text-lg mb-6 text-gray-600 dark:text-gray-300' }, 'Let’s build a program that takes a percentage score and assigns a letter grade using conditionals and input/output. Here’s the code:'),
+                React.createElement('div', { className: 'flex items-start mb-6' }, [
+                  React.createElement('pre', { className: 'code-block' }, 
+                    '# Grade Calculator\n' +
+                    'score = float(input("Enter your percentage score (0-100): "))\n' +
+                    'if score >= 90:\n' +
+                    '    grade = "A"\n' +
+                    'elif score >= 80:\n' +
+                    '    grade = "B"\n' +
+                    'elif score >= 70:\n' +
+                    '    grade = "C"\n' +
+                    'elif score >= 60:\n' +
+                    '    grade = "D"\n' +
+                    'else:\n' +
+                    '    grade = "F"\n' +
+                    'print(f"Your grade is: {grade}")'
+                  ),
+                  React.createElement('button', {
+                    className: 'btn bg-gray-600 hover:bg-gray-700 text-white copy-btn',
+                    onClick: () => copyCode(
+                      '# Grade Calculator\n' +
+                      'score = float(input("Enter your percentage score (0-100): "))\n' +
+                      'if score >= 90:\n' +
+                      '    grade = "A"\n' +
+                      'elif score >= 80:\n' +
+                      '    grade = "B"\n' +
+                      'elif score >= 70:\n' +
+                      '    grade = "C"\n' +
+                      'elif score >= 60:\n' +
+                      '    grade = "D"\n' +
+                      'else:\n' +
+                      '    grade = "F"\n' +
+                      'print(f"Your grade is: {grade}")'
+                    )
+                  }, 'Copy Code')
+                ]),
+                React.createElement('p', { className: 'text-lg mb-6 text-gray-600 dark:text-gray-300' }, 'How it works: The program takes a score, uses `if-elif-else` to determine the grade (A: 90+, B: 80–89, etc.), and prints it with an f-string. Copy this into `grade_calculator.py` and try inputs like 95 (A) or 55 (F).'),
+                // Mini-Project 2: Number Guessing Game
+                React.createElement('h3', { className: 'text-3xl font-semibold mt-12 mb-4' }, 'Mini-Project 2: Number Guessing Game'),
+                React.createElement('p', { className: 'text-lg mb-6 text-gray-600 dark:text-gray-300' }, 'This game generates a random number (1–10) and lets the user guess it, giving hints with conditionals and loops. You’ll need the `random` module:'),
+                React.createElement('div', { className: 'flex items-start mb-6' }, [
+                  React.createElement('pre', { className: 'code-block' }, 
+                    'import random\n' +
+                    '# Number Guessing Game\n' +
+                    'number = random.randint(1, 10)\n' +
+                    'attempts = 0\n' +
+                    'while True:\n' +
+                    '    guess = int(input("Guess a number (1-10): "))\n' +
+                    '    attempts += 1\n' +
+                    '    if guess == number:\n' +
+                    '        print(f"Correct! You took {attempts} attempts.")\n' +
+                    '        break\n' +
+                    '    elif guess < number:\n' +
+                    '        print("Too low! Try again.")\n' +
+                    '    else:\n' +
+                    '        print("Too high! Try again.")'
+                  ),
+                  React.createElement('button', {
+                    className: 'btn bg-gray-600 hover:bg-gray-700 text-white copy-btn',
+                    onClick: () => copyCode(
+                      'import random\n' +
+                      '# Number Guessing Game\n' +
+                      'number = random.randint(1, 10)\n' +
+                      'attempts = 0\n' +
+                      'while True:\n' +
+                      '    guess = int(input("Guess a number (1-10): "))\n' +
+                      '    attempts += 1\n' +
+                      '    if guess == number:\n' +
+                      '        print(f"Correct! You took {attempts} attempts.")\n' +
+                      '        break\n' +
+                      '    elif guess < number:\n' +
+                      '        print("Too low! Try again.")\n' +
+                      '    else:\n' +
+                      '        print("Too high! Try again.")'
+                    )
+                  }, 'Copy Code')
+                ]),
+                React.createElement('p', { className: 'text-lg mb-6 text-gray-600 dark:text-gray-300' }, 'This uses `random.randint(1, 10)` for a random number, a `while True` loop, and conditionals to guide the user. Save as `guessing_game.py` and play it!'),
+                // Mini-Project 3: Multiplication Table Generator
+                React.createElement('h3', { className: 'text-3xl font-semibold mt-12 mb-4' }, 'Mini-Project 3: Multiplication Table Generator'),
+                React.createElement('p', { className: 'text-lg mb-6 text-gray-600 dark:text-gray-300' }, 'This program prints a multiplication table for a user-specified number using a `for` loop and f-strings:'),
+                React.createElement('div', { className: 'flex items-start mb-6' }, [
+                  React.createElement('pre', { className: 'code-block' }, 
+                    '# Multiplication Table\n' +
+                    'num = int(input("Enter a number: "))\n' +
+                    'for i in range(1, 11):\n' +
+                    '    print(f"{num} x {i} = {num * i}")'
+                  ),
+                  React.createElement('button', {
+                    className: 'btn bg-gray-600 hover:bg-gray-700 text-white copy-btn',
+                    onClick: () => copyCode(
+                      '# Multiplication Table\n' +
+                      'num = int(input("Enter a number: "))\n' +
+                      'for i in range(1, 11):\n' +
+                      '    print(f"{num} x {i} = {num * i}")'
+                    )
+                  }, 'Copy Code')
+                ]),
+                React.createElement('p', { className: 'text-lg mb-6 text-gray-600 dark:text-gray-300' }, 'Enter a number (e.g., 5), and it prints 5 x 1 = 5 to 5 x 10 = 50. Save as `multiplication_table.py` and try it out!'),
+                // Quiz
+                React.createElement('h3', { className: 'text-3xl font-semibold mt-12 mb-4' }, 'Quiz: Test Your Knowledge'),
+                React.createElement('p', { className: 'text-lg mb-6 text-gray-600 dark:text-gray-300' }, 'Test what you’ve learned about input/output, operators, conditionals, and loops with these three questions:'),
+                quizQuestions.map(q => React.createElement(
+                  'div',
+                  { key: q.id, className: 'mb-6' },
+                  [
+                    React.createElement('p', { className: 'text-lg font-semibold mb-2' }, `Question ${q.id}: ${q.question}`),
+                    q.options.map(option => React.createElement(
+                      'div',
+                      { key: option, className: 'quiz-option mb-2' },
+                      [
+                        React.createElement('input', {
+                          type: 'radio',
+                          name: `question-${q.id}`,
+                          value: option,
+                          checked: quizAnswers[q.id] === option,
+                          onChange: () => setQuizAnswers({ ...quizAnswers, [q.id]: option }),
+                          disabled: quizSubmitted,
+                          className: 'mr-2'
+                        }),
+                        React.createElement('span', { className: 'text-lg text-gray-600 dark:text-gray-300' }, option)
+                      ]
+                    ))
+                  ]
+                )),
+                !quizSubmitted && React.createElement('button', {
+                  className: 'btn bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded mt-4',
+                  onClick: handleQuizSubmit,
+                  disabled: Object.keys(quizAnswers).length !== quizQuestions.length
+                }, 'Submit Quiz'),
+                quizSubmitted && React.createElement('p', { className: 'success mt-4' }, `Your score: ${quizScore}% (${Math.round(quizScore * quizQuestions.length / 100)}/${quizQuestions.length})`),
+                // What’s Next?
+                React.createElement('h3', { className: 'text-3xl font-semibold mt-12 mb-4' }, 'What’s Next?'),
+                React.createElement('p', { className: 'text-lg mb-6 text-gray-600 dark:text-gray-300' }, 'Amazing work! You’ve learned how to take input, use operators, make decisions with conditionals, and repeat tasks with loops. In Chapter 4, you’ll explore lists, tuples, and more advanced Python features. Share your feedback, revisit Chapter 2, or jump to the next chapter!'),
+                React.createElement('div', { className: 'flex flex-wrap gap-4' }, [
+                  React.createElement('button', {
+                    className: 'btn bg-blue-600 hover:bg-blue-700 text-white py-3 px-6 rounded-lg text-lg mt-4',
+                    onClick: () => setShowFeedback(true)
+                  }, 'Share Feedback'),
+                  React.createElement('a', {
+                    href: './index.html',
+                    className: 'btn bg-gray-600 hover:bg-gray-700 text-white py-3 px-6 rounded-lg text-lg mt-4'
+                  }, 'Back to Home'),
+                  React.createElement('a', {
+                    href: './chapter2.html',
+                    className: 'btn bg-gray-600 hover:bg-gray-700 text-white py-3 px-6 rounded-lg text-lg mt-4'
+                  }, 'Previous: Chapter 2'),
+                  React.createElement('a', {
+                    href: './chapter4.html',
+                    className: 'btn bg-blue-600 hover:bg-blue-700 text-white py-3 px-6 rounded-lg text-lg mt-4'
+                  }, 'Next: Chapter 4')
+                ]),
+                copyMessage && React.createElement('p', { className: copyMessage.includes('Failed') ? 'error mt-4' : 'success mt-4' }, copyMessage),
+                feedbackMessage && React.createElement('p', { className: feedbackMessage.includes('Error') ? 'error mt-4' : 'success mt-4' }, feedbackMessage)
+              ]
+            ) : React.createElement(
+              'div',
+              { className: 'hero flex flex-col items-center justify-center text-center py-16 px-6' },
+              [
+                React.createElement('h2', { className: 'text-5xl font-extrabold mb-6 sm:text-4xl' }, 'Access Restricted'),
+                React.createElement('p', { className: 'text-lg mb-6 text-gray-600 dark:text-gray-300' }, 'Please sign in to access Chapter 3. Redirecting to the home page...'),
+                feedbackMessage && React.createElement('p', { className: 'error mt-4' }, feedbackMessage)
+              ]
+            ),
+            // Footer
+            React.createElement(
+              'footer',
+              { className: 'py-6 px-6 text-center bg-gray-100 dark:bg-gray-900' },
+              React.createElement('p', { className: 'text-gray-600 dark:text-gray-300' }, '© 2025 DPyLearn by Dharmik. Built with ❤️ for Python learners.')
+            )
+          ]
+        );
+      } catch (e) {
+        console.error('Render error:', e);
+        return React.createElement('div', { className: 'error' }, `Error loading page: ${e.message}. Please check the console for details.`);
+      }
+    };
+
+    try {
+      const root = ReactDOM.createRoot(document.getElementById('root'));
+      root.render(React.createElement(Chapter3));
+    } catch (e) {
+      console.error('ReactDOM render error:', e);
+      document.getElementById('root').innerHTML = '<div class="error">Error rendering page. Please check the console.</div>';
+    }
+  </script>
+</body>
+</html>

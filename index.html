@@ -1,0 +1,947 @@
+<script type="text/javascript">
+        var gk_isXlsx = false;
+        var gk_xlsxFileLookup = {};
+        var gk_fileData = {};
+        function filledCell(cell) {
+          return cell !== '' && cell != null;
+        }
+        function loadFileData(filename) {
+        if (gk_isXlsx && gk_xlsxFileLookup[filename]) {
+            try {
+                var workbook = XLSX.read(gk_fileData[filename], { type: 'base64' });
+                var firstSheetName = workbook.SheetNames[0];
+                var worksheet = workbook.Sheets[firstSheetName];
+
+                // Convert sheet to JSON to filter blank rows
+                var jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, blankrows: false, defval: '' });
+                // Filter out blank rows (rows where all cells are empty, null, or undefined)
+                var filteredData = jsonData.filter(row => row.some(filledCell));
+
+                // Heuristic to find the header row by ignoring rows with fewer filled cells than the next row
+                var headerRowIndex = filteredData.findIndex((row, index) =>
+                  row.filter(filledCell).length >= filteredData[index + 1]?.filter(filledCell).length
+                );
+                // Fallback
+                if (headerRowIndex === -1 || headerRowIndex > 25) {
+                  headerRowIndex = 0;
+                }
+
+                // Convert filtered JSON back to CSV
+                var csv = XLSX.utils.aoa_to_sheet(filteredData.slice(headerRowIndex)); // Create a new sheet from filtered array of arrays
+                csv = XLSX.utils.sheet_to_csv(csv, { header: 1 });
+                return csv;
+            } catch (e) {
+                console.error(e);
+                return "";
+            }
+        }
+        return gk_fileData[filename] || "";
+        }
+        </script><!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>DPyLearn - Free 30-Chapter Python Course</title>
+  <meta name="description" content="DPyLearn is a comprehensive, free Python course featuring 30 chapters, designed to guide learners from beginner to advanced proficiency. Master essential programming concepts through interactive tutorials, hands-on projects, and engaging quizzes covering topics like variables, loops, functions, type hints, decorators, and more. With progress tracking and optional sign-up to save your achievements, DPyLearn offers a structured, engaging path to Python mastery.">
+  <meta name="keywords" content="learn Python free, Python course, Python tutorials, beginner Python, advanced Python, Python quiz, Python projects, DPyLearn">
+  <meta name="author" content="Dharmik">
+  <meta property="og:title" content="DPyLearn - Free 30-Chapter Python Course">
+  <meta property="og:description" content="DPyLearn is a comprehensive, free Python course featuring 30 chapters, designed to guide learners from beginner to advanced proficiency. Master essential programming concepts through interactive tutorials, hands-on projects, and engaging quizzes.">
+  <meta property="og:image" content="">
+  <meta property="og:url" content="https://yourusername.github.io/DPyLearn">
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "Course",
+    "name": "DPyLearn 30-Chapter Python Course",
+    "description": "A comprehensive, free Python course with 30 chapters, featuring interactive tutorials, hands-on projects, and quizzes to master Python from beginner to advanced.",
+    "provider": {
+      "@type": "Organization",
+      "name": "DPyLearn"
+    }
+  }
+  </script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+  <style>
+    body { 
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; 
+      transition: background-color 0.3s ease, color 0.3s ease; 
+    }
+    .light { background-color: #ffffff; color: #1f2937; }
+    .dark { background-color: #0d1117; color: #e6edf3; }
+    .navbar { 
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1); 
+      background: #f3f4f6; 
+    }
+    .dark .navbar { background: #1a1f2e; }
+    .hero { min-height: 600px; }
+    .light .hero { background-color: #f9fafb; }
+    .dark .hero { background-color: #1a1f2e; }
+    .btn { 
+      transition: transform 0.3s ease, background-color 0.3s ease, box-shadow 0.3s ease; 
+      border-radius: 0.5rem; 
+    }
+    .btn:hover { transform: scale(1.05); box-shadow: 0 4px 12px rgba(0,0,0,0.2); }
+    .btn:focus { outline: none; box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.5); }
+    .chapter-card { 
+      transition: all 0.3s ease; 
+      border-radius: 0.5rem; 
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1); 
+    }
+    .chapter-card:hover { transform: translateY(-5px); box-shadow: 0 4px 12px rgba(0,0,0,0.2); }
+    .light .chapter-card { background: #f9fafb; }
+    .dark .chapter-card { background: #2d3748; }
+    .light .chapter-card:hover { background: #e5e7eb; }
+    .dark .chapter-card:hover { background: #4b5563; }
+    .progress-circle { transition: stroke-dashoffset 0.3s ease; }
+    .error { color: #ef4444; text-align: center; padding: 20px; }
+    .success { color: #10b981; text-align: center; padding: 10px; }
+    .spinner { 
+      border: 4px solid #f3f3f3; 
+      border-top: 4px solid #2563eb; 
+      border-radius: 50%; 
+      width: 24px; 
+      height: 24px; 
+      animation: spin 1s linear infinite; 
+    }
+    .dark .spinner { border: 4px solid #4b5563; border-top: 4px solid #60a5fa; }
+    @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    .modal { 
+      animation: fadeIn 0.3s ease; 
+      border-radius: 0.5rem; 
+      box-shadow: 0 4px 16px rgba(0,0,0,0.3); 
+    }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
+    .theme-toggle { position: fixed; bottom: 20px; right: 20px; z-index: 50; }
+    .sun-icon { width: 24px; height: 24px; }
+    .google-icon { font-weight: bold; font-size: 1.2rem; margin-right: 8px; }
+    .input-field { 
+      transition: border-color 0.3s ease, box-shadow 0.3s ease; 
+      border-radius: 0.375rem; 
+    }
+    .input-field:focus { 
+      outline: none; 
+      border-color: #2563eb; 
+      box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.5); 
+    }
+    .avatar { 
+      width: 40px; 
+      height: 40px; 
+      border-radius: 50%; 
+      display: flex; 
+      align-items: center; 
+      justify-content: center; 
+      font-weight: bold; 
+      font-size: 1.1rem; 
+      transition: background-color 0.3s ease, color 0.3s ease; 
+    }
+    .light .avatar { background: #2563eb; color: #ffffff; }
+    .dark .avatar { background: #60a5fa; color: #0d1117; }
+    .light .modal { background: #ffffff; }
+    .dark .modal { background: #2d3748; }
+    .light .input-field { background: #f9fafb; border-color: #d1d5db; }
+    .dark .input-field { background: #4b5563; border-color: #6b7280; }
+    .light .about-section { background: #f9fafb; }
+    .dark .about-section { background: #1a1f2e; }
+    .light .about-section p { color: #1f2937; }
+    .dark .about-section p { color: #e6edf3; }
+    @media (max-width: 640px) { 
+      .chapter-card { padding: 1.5rem; } 
+      .hero { min-height: 500px; } 
+      .text-5xl { font-size: 2.5rem; } 
+      .text-3xl { font-size: 1.75rem; } 
+      .text-xl { font-size: 1.125rem; } 
+    }
+  </style>
+</head>
+<body className="dark">
+  <div id="root"></div>
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-app.js";
+    import { getAuth, signInWithPopup, GoogleAuthProvider, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, updateProfile } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-auth.js";
+    import { getFirestore, doc, getDoc, setDoc, collection, addDoc, getDocs, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-firestore.js";
+
+    // Firebase configuration
+    const firebaseConfig = {
+      apiKey: "AIzaSyADcAkqXqSZ_crzAaMCNu6IWUYQS5ZWrIY",
+      authDomain: "sign-up-login-d1723.firebaseapp.com",
+      projectId: "sign-up-login-d1723",
+      storageBucket: "sign-up-login-d1723.firebasestorage.app",
+      messagingSenderId: "94024367004",
+      appId: "1:94024367004:web:b0c513729231a06da3a659",
+      measurementId: "G-XKX2CPZMQE"
+    };
+
+    let auth, db;
+    try {
+      const app = initializeApp(firebaseConfig);
+      auth = getAuth(app);
+      db = getFirestore(app);
+    } catch (e) {
+      console.error('Firebase initialization error:', e);
+      document.getElementById('root').innerHTML = '<div class="error">Error initializing Firebase: ' + e.message + '. Please check the console.</div>';
+    }
+
+    const { useState, useEffect } = React;
+
+    const App = () => {
+      const [user, setUser] = useState(null);
+      const [completedChapters, setCompletedChapters] = useState([]);
+      const [quizScores, setQuizScores] = useState({});
+      const [showFeedback, setShowFeedback] = useState(false);
+      const [feedback, setFeedback] = useState('');
+      const [chapter, setChapter] = useState('Chapter 1');
+      const [feedbackMessage, setFeedbackMessage] = useState('');
+      const [loading, setLoading] = useState(false);
+      const [theme, setTheme] = useState(localStorage.getItem('theme') || 'system');
+      const [showLoginModal, setShowLoginModal] = useState(false);
+      const [showUserMenu, setShowUserMenu] = useState(false);
+      const [authMode, setAuthMode] = useState('initial'); // 'initial', 'signup', 'login'
+      const [firstName, setFirstName] = useState('');
+      const [middleName, setMiddleName] = useState('');
+      const [lastName, setLastName] = useState('');
+      const [email, setEmail] = useState('');
+      const [password, setPassword] = useState('');
+
+      useEffect(() => {
+        // Apply theme
+        const applyTheme = () => {
+          const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+          document.body.className = theme === 'system' ? (prefersDark ? 'dark' : 'light') : theme;
+          localStorage.setItem('theme', theme);
+        };
+        applyTheme();
+
+        // System theme listener
+        const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+        const handleSystemThemeChange = (e) => {
+          if (theme === 'system') {
+            document.body.className = e.matches ? 'dark' : 'light';
+          }
+        };
+        mediaQuery.addEventListener('change', handleSystemThemeChange);
+
+        // Firebase auth state
+        if (auth && db) {
+          const unsubscribe = auth.onAuthStateChanged(async (user) => {
+            console.log("Auth state changed:", user);
+            setUser(user);
+            if (user) {
+              try {
+                const userDocRef = doc(db, 'users', user.uid);
+                const userDoc = await getDoc(userDocRef);
+                if (userDoc.exists()) {
+                  const data = userDoc.data();
+                  setCompletedChapters(data.completedChapters || []);
+                  setQuizScores(data.quizScores || {});
+                  setFirstName(data.firstName || '');
+                  setMiddleName(data.middleName || '');
+                  setLastName(data.lastName || '');
+                } else {
+                  await setDoc(userDocRef, {
+                    firstName: user.displayName ? user.displayName.split(' ')[0] : '',
+                    middleName: '',
+                    lastName: user.displayName ? user.displayName.split(' ').slice(1).join(' ') : '',
+                    email: user.email || '',
+                    completedChapters: [],
+                    quizScores: {}
+                  });
+                }
+              } catch (e) {
+                console.error('Error fetching user data:', e);
+                setFeedbackMessage(`Error loading user data: ${e.message}`);
+              }
+            } else {
+              const savedChapters = JSON.parse(localStorage.getItem('completedChapters') || '[]');
+              const savedScores = JSON.parse(localStorage.getItem('quizScores') || '{}');
+              setCompletedChapters(savedChapters);
+              setQuizScores(savedScores);
+              setFeedbackMessage('Firebase not available, using local storage.');
+            }
+          });
+          return () => {
+            unsubscribe();
+            mediaQuery.removeEventListener('change', handleSystemThemeChange);
+          };
+        } else {
+          const savedChapters = JSON.parse(localStorage.getItem('completedChapters') || '[]');
+          const savedScores = JSON.parse(localStorage.getItem('quizScores') || '{}');
+          setCompletedChapters(savedChapters);
+          setQuizScores(savedScores);
+          setFeedbackMessage('Firebase not available, using local storage.');
+        }
+      }, [theme]);
+
+      const toggleTheme = () => {
+        const themes = ['light', 'dark', 'system'];
+        const currentIndex = themes.indexOf(theme);
+        const nextTheme = themes[(currentIndex + 1) % themes.length];
+        setTheme(nextTheme);
+      };
+
+      const signInWithGoogle = () => {
+        if (!auth) {
+          setFeedbackMessage('Sign-up/Log-in unavailable: Firebase not configured.');
+          return;
+        }
+        setLoading(true);
+        alert("Sign-in triggered");
+        signInWithPopup(auth, new GoogleAuthProvider())
+          .then((result) => {
+            console.log('Signed in with Google:', result.user);
+            setShowLoginModal(false);
+            setLoading(false);
+          })
+          .catch((error) => {
+            console.error('Google sign-in error:', error.code, error.message);
+            setFeedbackMessage(`Error signing in: ${error.message}`);
+            setLoading(false);
+          });
+      };
+
+      const signInWithEmail = () => {
+        if (!auth) {
+          setFeedbackMessage('Log-in unavailable: Firebase not configured.');
+          return;
+        }
+        setLoading(true);
+        alert("Sign-in triggered");
+        signInWithEmailAndPassword(auth, email, password)
+          .then((userCredential) => {
+            console.log('User signed in successfully:', userCredential.user);
+            setShowLoginModal(false);
+            setEmail('');
+            setPassword('');
+            setLoading(false);
+          })
+          .catch((error) => {
+            console.error('Email log-in error:', error.code, error.message);
+            setFeedbackMessage(`Error logging in: ${error.message}`);
+            setLoading(false);
+          });
+      };
+
+      const signUpWithEmail = () => {
+        if (!auth) {
+          setFeedbackMessage('Sign-up unavailable: Firebase not configured.');
+          return;
+        }
+        if (!firstName || !lastName || !email || !password) {
+          setFeedbackMessage('Please fill in all required fields.');
+          setLoading(false);
+          return;
+        }
+        setLoading(true);
+        alert("Sign-in triggered");
+        createUserWithEmailAndPassword(auth, email, password)
+          .then((userCredential) => {
+            const user = userCredential.user;
+            console.log('User signed up successfully:', user);
+            updateProfile(user, {
+              displayName: `${firstName}${middleName ? ' ' + middleName : ''} ${lastName}`
+            });
+            setDoc(doc(db, 'users', user.uid), {
+              firstName,
+              middleName,
+              lastName,
+              email,
+              completedChapters: [],
+              quizScores: {}
+            });
+            setShowLoginModal(false);
+            setFirstName('');
+            setMiddleName('');
+            setLastName('');
+            setEmail('');
+            setPassword('');
+            setLoading(false);
+          })
+          .catch((error) => {
+            console.error('Email sign-up error:', error.code, error.message);
+            setFeedbackMessage(`Error signing up: ${error.message}`);
+            setLoading(false);
+          });
+      };
+
+      const signOutUser = () => {
+        if (!auth) {
+          setFeedbackMessage('Sign-out unavailable: Firebase not configured.');
+          return;
+        }
+        setLoading(true);
+        signOut(auth)
+          .then(() => {
+            setUser(null);
+            setCompletedChapters([]);
+            setQuizScores({});
+            setFirstName('');
+            setMiddleName('');
+            setLastName('');
+            setFeedbackMessage('Signed out successfully.');
+            setTimeout(() => setFeedbackMessage(''), 3000);
+            setShowUserMenu(false);
+            setLoading(false);
+          })
+          .catch((error) => {
+            console.error('Sign-out error:', error.code, error.message);
+            setFeedbackMessage(`Error signing out: ${error.message}`);
+            setLoading(false);
+          });
+      };
+
+      const saveFeedback = async () => {
+        setLoading(true);
+        try {
+          if (user && auth && db) {
+            await addDoc(collection(db, 'users', user.uid, 'feedbacks'), {
+              id: Date.now(),
+              text: feedback,
+              chapter,
+              timestamp: serverTimestamp()
+            });
+            setFeedbackMessage('Feedback saved to your account!');
+          } else {
+            let feedbacks = JSON.parse(localStorage.getItem('feedbacks') || '[]');
+            feedbacks.push({ id: Date.now(), text: feedback, chapter });
+            localStorage.setItem('feedbacks', JSON.stringify(feedbacks));
+            setFeedbackMessage('Feedback saved! Check Developer Tools → Application → Local Storage.');
+          }
+          setFeedback('');
+          setTimeout(() => setFeedbackMessage(''), 3000);
+          setShowFeedback(false);
+          setLoading(false);
+        } catch (e) {
+          console.error('Feedback save error:', e);
+          setFeedbackMessage(`Error saving feedback: ${e.message}`);
+          setLoading(false);
+        }
+      };
+
+      const exportFeedback = async () => {
+        setLoading(true);
+        try {
+          let feedbacks = [];
+          if (user && auth && db) {
+            const snapshot = await getDocs(collection(db, 'users', user.uid, 'feedbacks'));
+            feedbacks = snapshot.docs.map(doc => doc.data());
+          } else {
+            feedbacks = JSON.parse(localStorage.getItem('feedbacks') || '[]');
+          }
+          const blob = new Blob([JSON.stringify(feedbacks, null, 2)], { type: 'application/json' });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = 'feedback.json';
+          a.click();
+          URL.revokeObjectURL(url);
+          setFeedbackMessage('Feedback exported as feedback.json!');
+          setTimeout(() => setFeedbackMessage(''), 3000);
+          setLoading(false);
+        } catch (e) {
+          console.error('Feedback export error:', e);
+          setFeedbackMessage(`Error exporting feedback: ${e.message}`);
+          setLoading(false);
+        }
+      };
+
+      const handleChapterClick = (link) => {
+        if (!user) {
+          setFeedbackMessage('Please sign up or log in to access chapters.');
+          setShowLoginModal(true);
+          return;
+        }
+        window.location.href = link;
+      };
+
+      const getInitials = () => {
+        if (!firstName || !lastName) return 'U';
+        return `${firstName[0]}${lastName[0]}`.toUpperCase();
+      };
+
+      const chapters = [
+        { id: 1, title: "Introduction to Python and Setup", link: "./chapter1.html", description: "Learn Python installation and basic syntax." },
+        { id: 2, title: "Variables and Data Types", link: "./chapter2.html", description: "Understand variables, integers, strings, and more." },
+        { id: 3, title: "Basic Operations", link: "./chapter3.html", description: "Master arithmetic and comparison operators." },
+        { id: 4, title: "Input and Output", link: "./chapter4.html", description: "Handle user input and output formatting." },
+        { id: 5, title: "Conditional Statements: if, elif, else", link: "./chapter5.html", description: "Control flow with conditionals." },
+        { id: 6, title: "Loops: for Loop", link: "./chapter6.html", description: "Iterate with for loops." },
+        { id: 7, title: "Loops: while Loop", link: "./chapter7.html", description: "Use while loops for dynamic iteration." },
+        { id: 8, title: "Nested Loops", link: "./chapter8.html", description: "Combine loops for complex patterns." },
+        { id: 9, title: "Lists: Creation and Indexing", link: "./chapter9.html", description: "Create and access lists." },
+        { id: 10, title: "List Operations", link: "./chapter10.html", description: "Manipulate lists with methods." },
+        { id: 11, title: "Tuples", link: "./chapter11.html", description: "Work with immutable tuples." },
+        { id: 12, title: "Sets", link: "./chapter12.html", description: "Use sets for unique elements." },
+        { id: 13, title: "Dictionaries: Key-Value Pairs", link: "./chapter13.html", description: "Store data in dictionaries." },
+        { id: 14, title: "Dictionary Operations", link: "./chapter14.html", description: "Advanced dictionary manipulation." },
+        { id: 15, title: "String Basics", link: "./chapter15.html", description: "Explore string properties." },
+        { id: 16, title: "String Methods", link: "./chapter16.html", description: "Use built-in string methods." },
+        { id: 17, title: "String Formatting", link: "./chapter17.html", description: "Format strings dynamically." },
+        { id: 18, title: "Functions: Basics", link: "./chapter18.html", description: "Define and call functions." },
+        { id: 19, title: "Functions: Parameters", link: "./chapter19.html", description: "Use parameters and return values." },
+        { id: 20, title: "Scope and Lifetime", link: "./chapter20.html", description: "Understand variable scope." },
+        { id: 21, title: "Recursion", link: "./chapter21.html", description: "Implement recursive functions." },
+        { id: 22, title: "Modules", link: "./chapter22.html", description: "Import and use modules." },
+        { id: 23, title: "Exception Handling: Basics", link: "./chapter23.html", description: "Handle errors with try/except." },
+        { id: 24, title: "Exception Handling: Advanced", link: "./chapter24.html", description: "Advanced error handling techniques." },
+        { id: 25, title: "Walrus Operator", link: "./chapter25.html", description: "Use the walrus operator for assignments." },
+        { id: 26, title: "Type Hints", link: "./chapter26.html", description: "Add type hints for better code clarity." },
+        { id: 27, title: "Lambda Functions", link: "./chapter27.html", description: "Create anonymous functions." },
+        { id: 28, title: "Decorators", link: "./chapter28.html", description: "Enhance functions with decorators." },
+        { id: 29, title: "Generators", link: "./chapter29.html", description: "Use generators for efficient iteration." },
+        { id: 30, title: "Context Managers", link: "./chapter30.html", description: "Manage resources with context managers." }
+      ];
+
+      try {
+        return React.createElement(
+          'div',
+          { className: 'min-h-screen flex flex-col' },
+          [
+            // Navbar
+            React.createElement(
+              'nav',
+              { className: 'navbar py-4 px-6 flex justify-between items-center sticky top-0 z-10' },
+              [
+                React.createElement('h1', { className: 'text-2xl font-bold' }, 'DPyLearn'),
+                React.createElement(
+                  'div',
+                  { className: 'flex items-center' },
+                  user ? 
+                    React.createElement(
+                      'div',
+                      { className: 'relative' },
+                      [
+                        React.createElement('button', {
+                          className: 'avatar',
+                          onClick: () => setShowUserMenu(!showUserMenu)
+                        }, getInitials()),
+                        showUserMenu && React.createElement(
+                          'div',
+                          { className: 'absolute right-0 mt-2 bg-gray-100 dark:bg-gray-800 rounded-lg shadow-lg p-4 w-80' },
+                          [
+                            React.createElement('p', { className: 'text-sm font-semibold' }, `${firstName}${middleName ? ' ' + middleName : ''} ${lastName}`),
+                            React.createElement('p', { className: 'text-sm mt-1 text-gray-600 dark:text-gray-300' }, user.email),
+                            React.createElement('p', { className: 'text-sm mt-2 text-gray-600 dark:text-gray-300' }, `Completed Chapters: ${completedChapters.length}/30`),
+                            React.createElement('p', { className: 'text-sm mt-1 text-gray-600 dark:text-gray-300' }, `Quiz Scores: ${Object.keys(quizScores).length} chapters`),
+                            React.createElement('button', {
+                              className: 'btn bg-blue-600 hover:bg-blue-700 text-white py-1 px-2 w-full mt-2 flex items-center justify-center',
+                              onClick: () => setShowFeedback(true)
+                            }, 'Submit Feedback'),
+                            React.createElement('h4', { className: 'text-sm font-semibold mt-4' }, 'Chapters'),
+                            React.createElement(
+                              'div',
+                              { className: 'max-h-40 overflow-y-auto mt-2' },
+                              chapters.map(chapter => React.createElement(
+                                'div',
+                                { key: chapter.id, className: 'text-sm py-1' },
+                                [
+                                  React.createElement('a', {
+                                    href: '#',
+                                    className: 'hover:text-blue-600 dark:hover:text-blue-400',
+                                    onClick: () => handleChapterClick(chapter.link)
+                                  }, chapter.title),
+                                  React.createElement('span', { className: 'ml-2' }, completedChapters.includes(chapter.id) ? '✅' : '')
+                                ]
+                              ))
+                            ),
+                            React.createElement('button', {
+                              className: 'btn bg-red-600 hover:bg-red-700 text-white py-1 px-2 w-full mt-2 flex items-center justify-center',
+                              onClick: signOutUser
+                            }, [
+                              'Sign Out',
+                              loading && React.createElement('span', { className: 'spinner ml-2' })
+                            ])
+                          ]
+                        )
+                      ]
+                    ) :
+                    React.createElement('button', {
+                      className: 'btn bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-lg flex items-center',
+                      onClick: () => setShowLoginModal(true)
+                    }, [
+                      'Sign Up / Log In',
+                      loading && React.createElement('span', { className: 'spinner ml-2' })
+                    ])
+                )
+              ]
+            ),
+            // Login Modal
+            showLoginModal && React.createElement(
+              'div',
+              { className: 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-20', onClick: () => setShowLoginModal(false) },
+              React.createElement(
+                'div',
+                { className: 'modal p-6 max-w-md w-full', onClick: e => e.stopPropagation() },
+                [
+                  React.createElement('h3', { className: 'text-xl font-semibold mb-4 text-center' }, authMode === 'signup' ? 'Sign Up' : authMode === 'login' ? 'Log In' : 'Sign Up or Log In'),
+                  authMode === 'initial' && [
+                    React.createElement('button', {
+                      className: 'btn bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 w-full mb-2 flex items-center justify-center',
+                      onClick: signInWithGoogle
+                    }, [
+                      React.createElement('span', { className: 'google-icon' }, 'G'),
+                      'Sign in with Google',
+                      loading && React.createElement('span', { className: 'spinner ml-2' })
+                    ]),
+                    React.createElement('button', {
+                      className: 'btn bg-purple-600 hover:bg-purple-700 text-white py-2 px-4 w-full mb-2 flex items-center justify-center',
+                      onClick: () => setAuthMode('signup')
+                    }, [
+                      'Sign Up with Email',
+                      loading && React.createElement('span', { className: 'spinner ml-2' })
+                    ]),
+                    React.createElement('button', {
+                      className: 'btn bg-green-600 hover:bg-green-700 text-white py-2 px-4 w-full mb-2 flex items-center justify-center',
+                      onClick: () => setAuthMode('login')
+                    }, [
+                      'Log In with Email',
+                      loading && React.createElement('span', { className: 'spinner ml-2' })
+                    ])
+                  ],
+                  (authMode === 'signup' || authMode === 'login') && [
+                    authMode === 'signup' && [
+                      React.createElement('div', { className: 'mb-4' }, [
+                        React.createElement('label', { className: 'block text-sm font-medium mb-1 text-gray-700 dark:text-gray-200' }, 'First Name'),
+                        React.createElement('input', {
+                          type: 'text',
+                          className: 'input-field w-full p-2 rounded border',
+                          value: firstName,
+                          onChange: e => setFirstName(e.target.value),
+                          placeholder: 'Enter your first name'
+                        })
+                      ]),
+                      React.createElement('div', { className: 'mb-4' }, [
+                        React.createElement('label', { className: 'block text-sm font-medium mb-1 text-gray-700 dark:text-gray-200' }, 'Middle Name (Optional)'),
+                        React.createElement('input', {
+                          type: 'text',
+                          className: 'input-field w-full p-2 rounded border',
+                          value: middleName,
+                          onChange: e => setMiddleName(e.target.value),
+                          placeholder: 'Enter your middle name'
+                        })
+                      ]),
+                      React.createElement('div', { className: 'mb-4' }, [
+                        React.createElement('label', { className: 'block text-sm font-medium mb-1 text-gray-700 dark:text-gray-200' }, 'Last Name'),
+                        React.createElement('input', {
+                          type: 'text',
+                          className: 'input-field w-full p-2 rounded border',
+                          value: lastName,
+                          onChange: e => setLastName(e.target.value),
+                          placeholder: 'Enter your last name'
+                        })
+                      ])
+                    ],
+                    React.createElement('div', { className: 'mb-4' }, [
+                      React.createElement('label', { className: 'block text-sm font-medium mb-1 text-gray-700 dark:text-gray-200' }, 'Email'),
+                      React.createElement('input', {
+                        type: 'email',
+                        className: 'input-field w-full p-2 rounded border',
+                        value: email,
+                        onChange: e => setEmail(e.target.value),
+                        placeholder: 'Enter your email'
+                      })
+                    ]),
+                    React.createElement('div', { className: 'mb-4' }, [
+                      React.createElement('label', { className: 'block text-sm font-medium mb-1 text-gray-700 dark:text-gray-200' }, 'Password'),
+                      React.createElement('input', {
+                        type: 'password',
+                        className: 'input-field w-full p-2 rounded border',
+                        value: password,
+                        onChange: e => setPassword(e.target.value),
+                        placeholder: 'Enter your password'
+                      })
+                    ]),
+                    React.createElement('button', {
+                      className: 'btn bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 w-full mb-2 flex items-center justify-center',
+                      onClick: authMode === 'signup' ? signUpWithEmail : signInWithEmail
+                    }, [
+                      authMode === 'signup' ? 'Sign Up' : 'Log In',
+                      loading && React.createElement('span', { className: 'spinner ml-2' })
+                    ]),
+                    React.createElement('p', { className: 'text-sm text-center mt-2 text-gray-600 dark:text-gray-300' }, [
+                      authMode === 'signup' ? 'If you already have an account, ' : 'If you haven\'t an account, ',
+                      React.createElement('span', {
+                        className: 'text-blue-600 dark:text-blue-400 cursor-pointer hover:underline',
+                        onClick: () => setAuthMode(authMode === 'signup' ? 'login' : 'signup')
+                      }, authMode === 'signup' ? 'log in' : 'register')
+                    ])
+                  ],
+                  React.createElement('button', {
+                    className: 'btn bg-gray-600 hover:bg-gray-700 text-white py-2 px-4 w-full mt-2 flex items-center justify-center',
+                    onClick: () => {
+                      setShowLoginModal(false);
+                      setAuthMode('initial');
+                      setFirstName('');
+                      setMiddleName('');
+                      setLastName('');
+                      setEmail('');
+                      setPassword('');
+                    }
+                  }, 'Cancel'),
+                  feedbackMessage && React.createElement('p', { className: feedbackMessage.includes('Error') ? 'error mt-2' : 'success mt-2' }, feedbackMessage)
+                ]
+              )
+            ),
+            // Feedback Form
+            showFeedback && React.createElement(
+              'div',
+              { className: 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-20', onClick: () => setShowFeedback(false) },
+              React.createElement(
+                'div',
+                { className: 'modal p-6 max-w-md w-full', onClick: e => e.stopPropagation() },
+                [
+                  React.createElement('h3', { className: 'text-xl font-semibold mb-4 text-center' }, 'Submit Feedback'),
+                  React.createElement(
+                    'select',
+                    {
+                      className: 'w-full p-2 mb-4 bg-gray-100 dark:bg-gray-800 rounded border border-gray-300 dark:border-gray-600',
+                      value: chapter,
+                      onChange: e => setChapter(e.target.value)
+                    },
+                    chapters.map(ch => React.createElement('option', { key: ch.id }, `Chapter ${ch.id}`))
+                  ),
+                  React.createElement('textarea', {
+                    className: 'w-full p-2 mb-4 bg-gray-100 dark:bg-gray-800 rounded border border-gray-300 dark:border-gray-600',
+                    rows: 4,
+                    placeholder: 'Your feedback...',
+                    value: feedback,
+                    onChange: e => setFeedback(e.target.value)
+                  }),
+                  React.createElement(
+                    'div',
+                    { className: 'flex justify-end space-x-2' },
+                    [
+                      React.createElement('button', {
+                        className: 'btn bg-gray-600 hover:bg-gray-700 text-white py-2 px-4 rounded flex items-center',
+                        onClick: () => setShowFeedback(false)
+                      }, 'Cancel'),
+                      React.createElement('button', {
+                        className: 'btn bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded flex items-center',
+                        onClick: saveFeedback
+                      }, [
+                        'Submit',
+                        loading && React.createElement('span', { className: 'spinner ml-2' })
+                      ]),
+                      React.createElement('button', {
+                        className: 'btn bg-green-600 hover:bg-green-700 text-white py-2 px-4 rounded flex items-center',
+                        onClick: exportFeedback
+                      }, [
+                        'Export Feedback',
+                        loading && React.createElement('span', { className: 'spinner ml-2' })
+                      ])
+                    ]
+                  ),
+                  feedbackMessage && React.createElement('p', { className: feedbackMessage.includes('Error') ? 'error mt-2' : 'success mt-2' }, feedbackMessage)
+                ]
+              )
+            ),
+            // Theme Toggle
+            React.createElement(
+              'div',
+              { className: 'theme-toggle' },
+              React.createElement('button', {
+                className: 'p-2 rounded-full bg-transparent',
+                onClick: toggleTheme
+              }, [
+                React.createElement('svg', {
+                  className: 'sun-icon',
+                  viewBox: '0 0 24 24',
+                  fill: 'none',
+                  stroke: theme === 'light' ? '#1f2937' : '#e6edf3',
+                  strokeWidth: '2'
+                }, [
+                  React.createElement('circle', { cx: '12', cy: '12', r: '5' }),
+                  React.createElement('line', { x1: '12', y1: '1', x2: '12', y2: '3' }),
+                  React.createElement('line', { x1: '12', y1: '21', x2: '12', y2: '23' }),
+                  React.createElement('line', { x1: '4.22', y1: '4.22', x2: '5.64', y2: '5.64' }),
+                  React.createElement('line', { x1: '18.36', y1: '18.36', x2: '19.78', y2: '19.78' }),
+                  React.createElement('line', { x1: '1', y1: '12', x2: '3', y2: '12' }),
+                  React.createElement('line', { x1: '21', y1: '12', x2: '23', y2: '12' }),
+                  React.createElement('line', { x1: '4.22', y1: '19.78', x2: '5.64', y2: '18.36' }),
+                  React.createElement('line', { x1: '18.36', y1: '5.64', x2: '19.78', y2: '4.22' })
+                ])
+              ])
+            ),
+            // Profile View (Conditional)
+            user ? [
+              // Professional Profile Section
+              React.createElement(
+                'div',
+                { className: 'hero flex flex-col items-center justify-center text-center py-16 px-6' },
+                [
+                  React.createElement('h2', { className: 'text-5xl font-extrabold mb-6 sm:text-4xl' }, 'DPyLearn'),
+                  React.createElement('p', { className: 'text-xl mb-6 max-w-3xl text-gray-600 dark:text-gray-300' }, 'Welcome to DPyLearn, a premium platform to master Python through 30 comprehensive chapters with interactive tutorials, hands-on projects, and engaging quizzes.'),
+                  React.createElement('button', {
+                    className: 'btn bg-blue-600 hover:bg-blue-700 text-white py-3 px-6 rounded-lg text-lg mt-4',
+                    onClick: () => handleChapterClick('./chapter1.html')
+                  }, 'Start Learning'),
+                  React.createElement('h3', { className: 'text-2xl font-semibold mt-12 mb-4' }, 'What is DPyLearn?'),
+                  React.createElement('p', { className: 'text-lg mb-6 max-w-3xl text-gray-600 dark:text-gray-300' }, 'DPyLearn is a comprehensive, free Python course featuring 30 chapters, designed to guide learners from beginner to advanced proficiency. Master essential programming concepts through interactive tutorials, hands-on projects, and engaging quizzes covering topics like variables, loops, functions, type hints, decorators, and more. With progress tracking and optional sign-up to save your achievements, DPyLearn offers a structured, engaging path to Python mastery.'),
+                  React.createElement('h3', { className: 'text-2xl font-semibold mt-12 mb-4' }, 'What You’ll Learn'),
+                  React.createElement('p', { className: 'text-lg mb-6 max-w-3xl text-gray-600 dark:text-gray-300' }, 'Explore 30 chapters covering foundational to advanced Python concepts, including data types, control structures, functions, and modern features like type hints and decorators, reinforced with practical projects and quizzes.'),
+                  React.createElement('h3', { className: 'text-2xl font-semibold mt-12 mb-4' }, 'What You Already Learned'),
+                  React.createElement('p', { className: 'text-lg mb-6 max-w-3xl text-gray-600 dark:text-gray-300' }, completedChapters.length > 0 ? `You’ve completed ${completedChapters.length}/30 chapters! Keep going to unlock more skills.` : 'Start your journey today to track your progress!')
+                ]
+              ),
+              // Authentic Profile Section (Chapters)
+              React.createElement(
+                'div',
+                { id: 'chapters', className: 'py-16 px-6 max-w-6xl mx-auto' },
+                [
+                  React.createElement('h3', { className: 'text-3xl font-semibold text-center mb-8' }, 'Your Learning Journey'),
+                  React.createElement(
+                    'div',
+                    { className: 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6' },
+                    chapters.map(chapter => React.createElement(
+                      'div',
+                      { key: chapter.id, className: 'chapter-card p-6' },
+                      [
+                        React.createElement(
+                          'h4',
+                          { className: 'text-xl font-semibold mb-2' },
+                          React.createElement('a', {
+                            href: '#',
+                            className: 'hover:text-blue-600 dark:hover:text-blue-400',
+                            onClick: () => handleChapterClick(chapter.link)
+                          }, chapter.title)
+                        ),
+                        React.createElement('p', { className: 'text-gray-600 dark:text-gray-300' }, chapter.description),
+                        React.createElement('p', { className: 'text-sm mt-2 text-gray-500 dark:text-gray-400' }, completedChapters.includes(chapter.id) ? '✅ Completed' : 'Not started')
+                      ]
+                    ))
+                  )
+                ]
+              ),
+              // Course Highlights
+              React.createElement(
+                'div',
+                { className: 'py-16 px-6 max-w-4xl mx-auto' },
+                [
+                  React.createElement('h3', { className: 'text-3xl font-semibold text-center mb-8' }, 'Why Choose DPyLearn?'),
+                  React.createElement(
+                    'div',
+                    { className: 'grid grid-cols-1 sm:grid-cols-2 gap-6' },
+                    [
+                      React.createElement(
+                        'div',
+                        { className: 'chapter-card p-6' },
+                        [
+                          React.createElement('h4', { className: 'text-xl font-semibold mb-2' }, 'Interactive Quizzes'),
+                          React.createElement('p', { className: 'text-gray-600 dark:text-gray-300' }, 'Test your understanding with three multiple-choice questions per chapter, designed to reinforce key concepts.')
+                        ]
+                      ),
+                      React.createElement(
+                        'div',
+                        { className: 'chapter-card p-6' },
+                        [
+                          React.createElement('h4', { className: 'text-xl font-semibold mb-2' }, 'Hands-On Projects'),
+                          React.createElement('p', { className: 'text-gray-600 dark:text-gray-300' }, 'Apply your skills with practical mini-projects tailored to each chapter’s concepts, building real-world coding experience.')
+                        ]
+                      )
+                    ]
+                  )
+                ]
+              ),
+              // Progress Tracker
+              React.createElement(
+                'div',
+                { className: 'py-16 px-6 max-w-3xl mx-auto' },
+                [
+                  React.createElement('h3', { className: 'text-3xl font-semibold mb-4 text-center' }, 'Your Progress'),
+                  React.createElement(
+                    'div',
+                    { className: 'flex justify-center mb-4' },
+                    React.createElement(
+                      'svg',
+                      { className: 'w-24 h-24' },
+                      [
+                        React.createElement('circle', {
+                          cx: '50%',
+                          cy: '50%',
+                          r: '40',
+                          stroke: '#d1d5db',
+                          strokeWidth: '10',
+                          fill: 'none'
+                        }),
+                        React.createElement('circle', {
+                          cx: '50%',
+                          cy: '50%',
+                          r: '40',
+                          stroke: theme === 'light' ? '#2563eb' : '#60a5fa',
+                          strokeWidth: '10',
+                          fill: 'none',
+                          strokeDasharray: '251.2',
+                          strokeDashoffset: `${251.2 - (completedChapters.length / 30) * 251.2}`,
+                          className: 'progress-circle'
+                        })
+                      ]
+                    )
+                  ),
+                  React.createElement('p', { className: 'text-lg text-center mb-4 text-gray-600 dark:text-gray-300' }, `${completedChapters.length}/30 chapters completed`),
+                  completedChapters.length > 0 ? React.createElement(
+                    'ul',
+                    { className: 'mt-2 list-disc list-inside max-w-md mx-auto' },
+                    completedChapters.map(ch => React.createElement('li', { key: ch, className: 'text-gray-600 dark:text-gray-300' }, `Chapter ${ch}`))
+                  ) : React.createElement('p', { className: 'text-center text-gray-600 dark:text-gray-300' }, 'No chapters completed yet.'),
+                  React.createElement('h3', { className: 'text-2xl font-semibold mt-8 mb-4 text-center' }, 'Quiz Scores'),
+                  Object.keys(quizScores).length > 0 ? React.createElement(
+                    'ul',
+                    { className: 'mt-2 list-disc list-inside max-w-md mx-auto' },
+                    Object.entries(quizScores).map(([ch, score]) => React.createElement('li', { key: ch, className: 'text-gray-600 dark:text-gray-300' }, `Chapter ${ch}: ${score}%`))
+                  ) : React.createElement('p', { className: 'text-center text-gray-600 dark:text-gray-300' }, 'No quiz scores yet.')
+                ]
+              )
+            ] : [
+              // Pre-Login View
+              React.createElement(
+                'div',
+                { className: 'hero flex flex-col items-center justify-center text-center py-16 px-6' },
+                [
+                  React.createElement('h2', { className: 'text-5xl font-extrabold mb-6 sm:text-4xl' }, 'DPyLearn'),
+                  React.createElement('p', { className: 'text-xl mb-6 max-w-3xl text-gray-600 dark:text-gray-300' }, 'Welcome to DPyLearn, a premium platform to master Python through 30 comprehensive chapters with interactive tutorials, hands-on projects, and engaging quizzes.'),
+                  React.createElement('button', {
+                    className: 'btn bg-blue-600 hover:bg-blue-700 text-white py-3 px-6 rounded-lg text-lg mt-4',
+                    onClick: () => setShowLoginModal(true)
+                  }, 'Start Learning'),
+                  React.createElement('h3', { className: 'text-2xl font-semibold mt-12 mb-4' }, 'What is DPyLearn?'),
+                  React.createElement('p', { className: 'text-lg mb-6 max-w-3xl text-gray-600 dark:text-gray-300' }, 'DPyLearn is a comprehensive, free Python course featuring 30 chapters, designed to guide learners from beginner to advanced proficiency. Master essential programming concepts through interactive tutorials, hands-on projects, and engaging quizzes covering topics like variables, loops, functions, type hints, decorators, and more. With progress tracking and optional sign-up to save your achievements, DPyLearn offers a structured, engaging path to Python mastery.'),
+                  React.createElement('h3', { className: 'text-2xl font-semibold mt-12 mb-4' }, 'What You’ll Learn'),
+                  React.createElement('p', { className: 'text-lg mb-6 max-w-3xl text-gray-600 dark:text-gray-300' }, 'Explore 30 chapters covering foundational to advanced Python concepts, including data types, control structures, functions, and modern features like type hints and decorators, reinforced with practical projects and quizzes.')
+                ]
+              )
+            ],
+            // About Section
+            React.createElement(
+              'div',
+              { id: 'about', className: 'about-section py-16 px-6' },
+              [
+                React.createElement('h3', { className: 'text-3xl font-semibold text-center mb-8' }, 'About DPyLearn'),
+                React.createElement('p', { className: 'text-lg max-w-3xl mx-auto text-center' }, 'DPyLearn is a comprehensive, free Python course featuring 30 chapters, designed to guide learners from beginner to advanced proficiency. Master essential programming concepts through interactive tutorials, hands-on projects, and engaging quizzes covering topics like variables, loops, functions, type hints, decorators, and more. With progress tracking and optional sign-up to save your achievements, DPyLearn offers a structured, engaging path to Python mastery, suitable for learners at all levels seeking to build real-world coding skills.')
+              ]
+            ),
+            // Footer
+            React.createElement(
+              'footer',
+              { className: 'py-6 px-6 text-center bg-gray-100 dark:bg-gray-900' },
+              React.createElement('p', { className: 'text-gray-600 dark:text-gray-300' }, '© 2025 DPyLearn by Dharmik. Built with ❤️ for Python learners.')
+            )
+          ]
+        );
+      } catch (e) {
+        console.error('Render error:', e);
+        return React.createElement('div', { className: 'error' }, `Error loading page: ${e.message}. Please check the console for details.`);
+      }
+    };
+
+    try {
+      const root = ReactDOM.createRoot(document.getElementById('root'));
+      root.render(React.createElement(App));
+    } catch (e) {
+      console.error('ReactDOM render error:', e);
+      document.getElementById('root').innerHTML = '<div class="error">Error rendering page. Please check the console.</div>';
+    }
+  </script>
+</body>
+</html>

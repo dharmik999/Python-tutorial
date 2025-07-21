@@ -1,0 +1,1021 @@
+<script type="text/javascript">
+        var gk_isXlsx = false;
+        var gk_xlsxFileLookup = {};
+        var gk_fileData = {};
+        function filledCell(cell) {
+          return cell !== '' && cell != null;
+        }
+        function loadFileData(filename) {
+        if (gk_isXlsx && gk_xlsxFileLookup[filename]) {
+            try {
+                var workbook = XLSX.read(gk_fileData[filename], { type: 'base64' });
+                var firstSheetName = workbook.SheetNames[0];
+                var worksheet = workbook.Sheets[firstSheetName];
+
+                // Convert sheet to JSON to filter blank rows
+                var jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, blankrows: false, defval: '' });
+                // Filter out blank rows (rows where all cells are empty, null, or undefined)
+                var filteredData = jsonData.filter(row => row.some(filledCell));
+
+                // Heuristic to find the header row by ignoring rows with fewer filled cells than the next row
+                var headerRowIndex = filteredData.findIndex((row, index) =>
+                  row.filter(filledCell).length >= filteredData[index + 1]?.filter(filledCell).length
+                );
+                // Fallback
+                if (headerRowIndex === -1 || headerRowIndex > 25) {
+                  headerRowIndex = 0;
+                }
+
+                // Convert filtered JSON back to CSV
+                var csv = XLSX.utils.aoa_to_sheet(filteredData.slice(headerRowIndex)); // Create a new sheet from filtered array of arrays
+                csv = XLSX.utils.sheet_to_csv(csv, { header: 1 });
+                return csv;
+            } catch (e) {
+                console.error(e);
+                return "";
+            }
+        }
+        return gk_fileData[filename] || "";
+        }
+        </script><!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>DPyLearn - Chapter 18: Instance and Class Variables</title>
+  <meta name="description" content="Learn the difference between instance and class variables in Python with DPyLearn’s Chapter 18. Explore practical projects and test your knowledge with a quiz.">
+  <meta name="keywords" content="Python instance variables, class variables, OOP, DPyLearn">
+  <meta name="author" content="Dharmik">
+  <meta property="og:title" content="DPyLearn - Chapter 18: Instance and Class Variables">
+  <meta property="og:description" content="Master Python’s instance and class variables through hands-on projects and a quiz.">
+  <meta property="og:image" content="">
+  <meta property="og:url" content="https://yourusername.github.io/DPyLearn/chapter18.html">
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "Course",
+    "name": "DPyLearn Chapter 18: Instance and Class Variables",
+    "description": "Learn the difference between instance and class variables in Python with practical projects and a quiz.",
+    "provider": {
+      "@type": "Organization",
+      "name": "DPyLearn"
+    }
+  }
+  </script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/pyodide@0.26.1/dist/pyodide.js"></script>
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+  <style>
+    body { 
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; 
+      transition: background-color 0.3s ease, color 0.3s ease; 
+    }
+    .light { background-color: #ffffff; color: #1f2937; }
+    .dark { background-color: #0d1117; color: #e6edf3; }
+    .navbar { 
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1); 
+      background: #f3f4f6; 
+    }
+    .dark .navbar { background: #1a1f2e; }
+    .hero { min-height: 600px; }
+    .light .hero { background-color: #f9fafb; }
+    .dark .hero { background-color: #1a1f2e; }
+    .btn { 
+      transition: transform 0.3s ease, background-color 0.3s ease, box-shadow 0.3s ease; 
+      border-radius: 0.5rem; 
+    }
+    .btn:hover { transform: scale(1.05); box-shadow: 0 4px 12px rgba(0,0,0,0.2); }
+    .btn:focus { outline: none; box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.5); }
+    .error { color: #ef4444; text-align: center; padding: 20px; }
+    .success { color: #10b981; text-align: center; padding: 10px; }
+    .spinner { 
+      border: 4px solid #f3f3f3; 
+      border-top: 4px solid #2563eb; 
+      border-radius: 50%; 
+      width: 24px; 
+      height: 24px; 
+      animation: spin 1s linear infinite; 
+    }
+    .dark .spinner { border: 4px solid #4b5563; border-top: 4px solid #60a5fa; }
+    @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    .modal { 
+      animation: fadeIn 0.3s ease; 
+      border-radius: 0.5rem; 
+      box-shadow: 0 4px 16px rgba(0,0,0,0.3); 
+    }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
+    .theme-toggle { position: fixed; bottom: 20px; right: 20px; z-index: 50; }
+    .sun-icon { width: 24px; height: 24px; }
+    .input-field { 
+      transition: border-color 0.3s ease, box-shadow 0.3s ease; 
+      border-radius: 0.375rem; 
+    }
+    .input-field:focus { 
+      outline: none; 
+      border-color: #2563eb; 
+      box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.5); 
+    }
+    .avatar { 
+      width: 40px; 
+      height: 40px; 
+      border-radius: 50%; 
+      display: flex; 
+      align-items: center; 
+      justify-content: center; 
+      font-weight: bold; 
+      font-size: 1.1rem; 
+      transition: background-color 0.3s ease, color 0.3s ease; 
+    }
+    .light .avatar { background: #2563eb; color: #ffffff; }
+    .dark .avatar { background: #60a5fa; color: #0d1117; }
+    .light .modal { background: #ffffff; }
+    .dark .modal { background: #2d3748; }
+    .light .input-field { background: #f9fafb; border-color: #d1d5db; }
+    .dark .input-field { background: #4b5563; border-color: #6b7280; }
+    .user-menu { 
+      background: #ffffff; 
+      border: 1px solid #e5e7eb; 
+      border-radius: 0.5rem; 
+      box-shadow: 0 4px 12px rgba(0,0,0,0.2); 
+    }
+    .dark .user-menu { 
+      background: #1f2937; 
+      border: 1px solid #374151; 
+    }
+    .light .user-menu p, .light .user-menu a, .light .user-menu h4 { color: #1f2937; }
+    .dark .user-menu p, .dark .user-menu a, .dark .user-menu h4 { color: #e6edf3; }
+    .light .user-menu a:hover { color: #2563eb; }
+    .dark .user-menu a:hover { color: #60a5fa; }
+    .code-block { 
+      background: #f9fafb; 
+      border-radius: 0.5rem; 
+      padding: 1rem; 
+      font-family: 'Courier New', Courier, monospace; 
+      font-size: 0.9rem; 
+      white-space: pre-wrap; 
+      overflow-x: auto; 
+    }
+    .dark .code-block { background: #2d3748; }
+    .copy-btn { 
+      font-size: 0.8rem; 
+      padding: 0.25rem 0.5rem; 
+      margin-left: 0.5rem; 
+    }
+    .quiz-option { 
+      transition: background-color 0.3s ease; 
+      border-radius: 0.375rem; 
+      padding: 0.5rem; 
+    }
+    .quiz-option:hover { 
+      background-color: #e5e7eb; 
+    }
+    .dark .quiz-option:hover { 
+      background-color: #4b5563; }
+    .company-container { 
+      background: #f9fafb; 
+      border-radius: 0.5rem; 
+      padding: 1rem; 
+      max-width: 500px; 
+      margin: 0 auto; 
+    }
+    .dark .company-container { background: #2d3748; }
+    @media (max-width: 640px) { 
+      .hero { min-height: 500px; } 
+      .text-5xl { font-size: 2.5rem; } 
+      .text-3xl { font-size: 1.75rem; } 
+      .text-xl { font-size: 1.125rem; } 
+      .px-6 { padding-left: 1rem; padding-right: 1rem; } 
+    }
+  </style>
+</head>
+<body className="dark">
+  <div id="root"></div>
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-app.js";
+    import { getAuth, signOut } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-auth.js";
+    import { getFirestore, doc, getDoc, setDoc, collection, addDoc, serverTimestamp, getDocs } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-firestore.js";
+
+    // Firebase configuration
+    const firebaseConfig = {
+      apiKey: "AIzaSyADcAkqXqSZ_crzAaMCNu6IWUYQS5ZWrIY",
+      authDomain: "sign-up-login-d1723.firebaseapp.com",
+      projectId: "sign-up-login-d1723",
+      storageBucket: "sign-up-login-d1723.firebasestorage.app",
+      messagingSenderId: "94024367004",
+      appId: "1:94024367004:web:b0c513729231a06da3a659",
+      measurementId: "G-XKX2CPZMQE"
+    };
+
+    let auth, db;
+    try {
+      const app = initializeApp(firebaseConfig);
+      auth = getAuth(app);
+      db = getFirestore(app);
+    } catch (e) {
+      console.error('Firebase initialization error:', e);
+      document.getElementById('root').innerHTML = '<div class="error">Error initializing Firebase: ' + e.message + '. Please check the console.</div>';
+    }
+
+    const { useState, useEffect } = React;
+
+    const Chapter18 = () => {
+      const [user, setUser] = useState(null);
+      const [showFeedback, setShowFeedback] = useState(false);
+      const [feedback, setFeedback] = useState('');
+      const [feedbackMessage, setFeedbackMessage] = useState('');
+      const [loading, setLoading] = useState(false);
+      const [theme, setTheme] = useState(localStorage.getItem('theme') || 'system');
+      const [showUserMenu, setShowUserMenu] = useState(false);
+      const [firstName, setFirstName] = useState('');
+      const [middleName, setMiddleName] = useState('');
+      const [lastName, setLastName] = useState('');
+      const [quizAnswers, setQuizAnswers] = useState({});
+      const [quizSubmitted, setQuizSubmitted] = useState(false);
+      const [quizScore, setQuizScore] = useState(null);
+      const [copyMessage, setCopyMessage] = useState('');
+      const [employeeName, setEmployeeName] = useState('');
+      const [employeeSalary, setEmployeeSalary] = useState('');
+      const [companyName, setCompanyName] = useState('');
+      const [employeeAction, setEmployeeAction] = useState('add_employee');
+      const [employeeResult, setEmployeeResult] = useState('');
+      const [employeeError, setEmployeeError] = useState('');
+
+      useEffect(() => {
+        const applyTheme = () => {
+          const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+          document.body.className = theme === 'system' ? (prefersDark ? 'dark' : 'light') : theme;
+          localStorage.setItem('theme', theme);
+        };
+        applyTheme();
+
+        const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+        const handleSystemThemeChange = (e) => {
+          if (theme === 'system') {
+            document.body.className = e.matches ? 'dark' : 'light';
+          }
+        };
+        mediaQuery.addEventListener('change', handleSystemThemeChange);
+
+        if (auth && db) {
+          const unsubscribe = auth.onAuthStateChanged(async (user) => {
+            console.log("Auth state changed:", user);
+            if (user) {
+              setUser(user);
+              try {
+                const userDocRef = doc(db, 'users', user.uid);
+                const userDoc = await getDoc(userDocRef);
+                if (userDoc.exists()) {
+                  const data = userDoc.data();
+                  setFirstName(data.firstName || '');
+                  setMiddleName(data.middleName || '');
+                  setLastName(data.lastName || '');
+                }
+              } catch (e) {
+                console.error('Error fetching user data:', e);
+                setFeedbackMessage(`Error loading user data: ${e.message}`);
+              }
+            } else {
+              setFeedbackMessage('Please sign in to access this chapter.');
+              setTimeout(() => window.location.href = './index.html', 2000);
+            }
+          });
+          return () => {
+            unsubscribe();
+            mediaQuery.removeEventListener('change', handleSystemThemeChange);
+          };
+        } else {
+          setFeedbackMessage('Firebase not available. Redirecting to home page.');
+          setTimeout(() => window.location.href = './index.html', 2000);
+        }
+
+        // Load Pyodide
+        async function loadPyodideAndRun() {
+          try {
+            window.pyodide = await loadPyodide();
+            console.log('Pyodide loaded successfully');
+          } catch (e) {
+            console.error('Pyodide load error:', e);
+            setEmployeeError('Failed to load company engine.');
+          }
+        }
+        loadPyodideAndRun();
+      }, [theme]);
+
+      const toggleTheme = () => {
+        const themes = ['light', 'dark', 'system'];
+        const currentIndex = themes.indexOf(theme);
+        const nextTheme = themes[(currentIndex + 1) % themes.length];
+        setTheme(nextTheme);
+      };
+
+      const signOutUser = () => {
+        if (!auth) {
+          setFeedbackMessage('Sign-out unavailable: Firebase not configured.');
+          return;
+        }
+        setLoading(true);
+        signOut(auth)
+          .then(() => {
+            setUser(null);
+            setFirstName('');
+            setMiddleName('');
+            setLastName('');
+            setFeedbackMessage('Signed out successfully.');
+            setTimeout(() => window.location.href = './index.html', 2000);
+            setShowUserMenu(false);
+            setLoading(false);
+          })
+          .catch((error) => {
+            console.error('Sign-out error:', error.code, error.message);
+            setFeedbackMessage(`Error signing out: ${error.message}`);
+            setLoading(false);
+          });
+      };
+
+      const saveFeedback = async () => {
+        setLoading(true);
+        try {
+          if (user && auth && db) {
+            await addDoc(collection(db, 'users', user.uid, 'feedbacks'), {
+              id: Date.now(),
+              text: feedback,
+              chapter: 'Chapter 18',
+              timestamp: serverTimestamp()
+            });
+            setFeedbackMessage('Feedback saved to your account!');
+          } else {
+            let feedbacks = JSON.parse(localStorage.getItem('feedbacks') || '[]');
+            feedbacks.push({ id: Date.now(), text: feedback, chapter: 'Chapter 18' });
+            localStorage.setItem('feedbacks', JSON.stringify(feedbacks));
+            setFeedbackMessage('Feedback saved! Check Developer Tools → Application → Local Storage.');
+          }
+          setFeedback('');
+          setTimeout(() => setFeedbackMessage(''), 3000);
+          setShowFeedback(false);
+          setLoading(false);
+        } catch (e) {
+          console.error('Feedback save error:', e);
+          setFeedbackMessage(`Error saving feedback: ${e.message}`);
+          setLoading(false);
+        }
+      };
+
+      const exportFeedback = async () => {
+        setLoading(true);
+        try {
+          let feedbacks = [];
+          if (user && auth && db) {
+            const snapshot = await getDocs(collection(db, 'users', user.uid, 'feedbacks'));
+            feedbacks = snapshot.docs.map(doc => doc.data());
+          } else {
+            feedbacks = JSON.parse(localStorage.getItem('feedbacks') || '[]');
+          }
+          const blob = new Blob([JSON.stringify(feedbacks, null, 2)], { type: 'application/json' });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = 'feedback.json';
+          a.click();
+          URL.revokeObjectURL(url);
+          setFeedbackMessage('Feedback exported as feedback.json!');
+          setTimeout(() => setFeedbackMessage(''), 3000);
+          setLoading(false);
+        } catch (e) {
+          console.error('Feedback export error:', e);
+          setFeedbackMessage(`Error exporting feedback: ${e.message}`);
+          setLoading(false);
+        }
+      };
+
+      const copyCode = (code) => {
+        navigator.clipboard.writeText(code).then(() => {
+          setCopyMessage('Code copied!');
+          setTimeout(() => setCopyMessage(''), 3000);
+        }).catch((err) => {
+          console.error('Copy error:', err);
+          setCopyMessage('Failed to copy code.');
+        });
+      };
+
+      const manageEmployee = async () => {
+        if (!window.pyodide) {
+          setEmployeeError('Company engine not loaded.');
+          return;
+        }
+        try {
+          if (!employeeName || !employeeSalary || !companyName) {
+            setEmployeeError('Please enter employee name, salary, and company name.');
+            return;
+          }
+          const code = `
+class Company:
+    company_name = "${companyName}"
+    employee_count = 0
+    
+    def __init__(self, name, salary):
+        self.name = name
+        try:
+            self.salary = float(salary)
+            if self.salary < 0:
+                raise ValueError("Salary cannot be negative.")
+            Company.employee_count += 1
+        except ValueError as e:
+            raise ValueError(f"Invalid salary: {str(e)}")
+    
+    def get_details(self):
+        return f"Employee: {self.name}, Salary: {self.salary:.2f}, Company: {Company.company_name}"
+    
+    def update_company_name(cls, new_name):
+        try:
+            if not new_name:
+                raise ValueError("Company name cannot be empty.")
+            Company.company_name = new_name
+            return f"Company name updated to {new_name}."
+        except ValueError as e:
+            return f"Error: {str(e)}"
+
+employee = Company("${employeeName}", ${employeeSalary})
+result = employee.${employeeAction === 'add_employee' ? 'get_details' : 'update_company_name'}("${employeeAction === 'add_employee' ? '' : companyName}")
+result
+          `;
+          const output = await window.pyodide.runPythonAsync(code);
+          setEmployeeResult(output.toString());
+          setEmployeeError('');
+        } catch (e) {
+          console.error('Employee management error:', e);
+          setEmployeeError(`Error: ${e.message}`);
+          setEmployeeResult('');
+        }
+      };
+
+      const quizQuestions = [
+        {
+          id: 1,
+          question: 'What is true about instance variables in Python?',
+          options: [
+            'Shared across all instances of a class',
+            'Defined outside the __init__ method',
+            'Unique to each object of a class',
+            'Cannot be modified after creation'
+          ],
+          correct: 'Unique to each object of a class'
+        },
+        {
+          id: 2,
+          question: 'How is a class variable typically defined?',
+          options: [
+            'Inside __init__ with self',
+            'Inside a method with cls',
+            'In the class body, outside methods',
+            'Using a global keyword'
+          ],
+          correct: 'In the class body, outside methods'
+        },
+        {
+          id: 3,
+          question: 'What happens if you modify a class variable using an instance (e.g., self.var = value)?',
+          options: [
+            'The class variable changes for all instances',
+            'A new instance variable is created for that instance',
+            'It raises an error',
+            'The class variable becomes immutable'
+          ],
+          correct: 'A new instance variable is created for that instance'
+        }
+      ];
+
+      const handleQuizSubmit = async () => {
+        let score = 0;
+        quizQuestions.forEach(q => {
+          if (quizAnswers[q.id] === q.correct) score++;
+        });
+        const percentage = (score / quizQuestions.length) * 100;
+        setQuizScore(percentage);
+        setQuizSubmitted(true);
+
+        try {
+          if (user && auth && db) {
+            const userDocRef = doc(db, 'users', user.uid);
+            const userDoc = await getDoc(userDocRef);
+            const quizScores = userDoc.exists() ? (userDoc.data().quizScores || {}) : {};
+            quizScores['18'] = percentage;
+            await setDoc(userDocRef, { quizScores }, { merge: true });
+            setFeedbackMessage(`Quiz submitted! You scored ${score}/${quizQuestions.length} (${percentage}%).`);
+          } else {
+            const savedScores = JSON.parse(localStorage.getItem('quizScores') || '{}');
+            savedScores['18'] = percentage;
+            localStorage.setItem('quizScores', JSON.stringify(savedScores));
+            setFeedbackMessage(`Quiz submitted! You scored ${score}/${quizQuestions.length} (${percentage}%). Saved to local storage.`);
+          }
+          setTimeout(() => setFeedbackMessage(''), 3000);
+        } catch (e) {
+          console.error('Quiz save error:', e);
+          setFeedbackMessage(`Error saving quiz score: ${e.message}`);
+        }
+      };
+
+      const getInitials = () => {
+        if (!firstName || !lastName) return 'U';
+        return `${firstName[0]}${lastName[0]}`.toUpperCase();
+      };
+
+      try {
+        return React.createElement(
+          'div',
+          { className: 'min-h-screen flex flex-col' },
+          [
+            // Navbar
+            React.createElement(
+              'nav',
+              { className: 'navbar py-4 px-6 flex justify-between items-center sticky top-0 z-10' },
+              [
+                React.createElement('a', { href: './index.html', className: 'text-2xl font-bold' }, 'DPyLearn'),
+                (user && React.createElement(
+                  'div',
+                  { className: 'relative' },
+                  [
+                    React.createElement('button', {
+                      className: 'avatar',
+                      onClick: () => setShowUserMenu(!showUserMenu)
+                    }, getInitials()),
+                    (showUserMenu && React.createElement(
+                      'div',
+                      { className: 'user-menu absolute right-0 mt-2 rounded-lg p-4 w-80' },
+                      [
+                        React.createElement('p', { className: 'text-sm font-semibold' }, `${firstName}${middleName ? ' ' + middleName : ''} ${lastName}`),
+                        React.createElement('p', { className: 'text-sm mt-1' }, user.email),
+                        React.createElement('button', {
+                          className: 'btn bg-blue-600 hover:bg-blue-700 text-white py-1 px-2 w-full mt-2 flex items-center justify-center',
+                          onClick: () => setShowFeedback(true)
+                        }, 'Submit Feedback'),
+                        React.createElement('button', {
+                          className: 'btn bg-red-600 hover:bg-red-700 text-white py-1 px-2 w-full mt-2 flex items-center justify-center',
+                          onClick: signOutUser
+                        }, [
+                          'Sign Out',
+                          (loading && React.createElement('span', { className: 'spinner ml-2' }))
+                        ])
+                      ]
+                    ))
+                  ]
+                ))
+              ]
+            ),
+            // Feedback Form
+            (showFeedback && React.createElement(
+              'div',
+              { className: 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-20', onClick: () => setShowFeedback(false) },
+              React.createElement(
+                'div',
+                { className: 'modal p-6 max-w-md w-full', onClick: e => e.stopPropagation() },
+                [
+                  React.createElement('h3', { className: 'text-xl font-semibold mb-4 text-center' }, 'Submit Feedback'),
+                  React.createElement('textarea', {
+                    className: 'w-full p-2 mb-4 bg-gray-100 dark:bg-gray-800 rounded border border-gray-300 dark:border-gray-600',
+                    rows: 4,
+                    placeholder: 'Your feedback for Chapter 18...',
+                    value: feedback,
+                    onChange: e => setFeedback(e.target.value)
+                  }),
+                  React.createElement(
+                    'div',
+                    { className: 'flex justify-end space-x-2' },
+                    [
+                      React.createElement('button', {
+                        className: 'btn bg-gray-600 hover:bg-gray-700 text-white py-2 px-4 rounded flex items-center',
+                        onClick: () => setShowFeedback(false)
+                      }, 'Cancel'),
+                      React.createElement('button', {
+                        className: 'btn bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded flex items-center',
+                        onClick: saveFeedback
+                      }, [
+                        'Submit',
+                        (loading && React.createElement('span', { className: 'spinner ml-2' }))
+                      ]),
+                      React.createElement('button', {
+                        className: 'btn bg-green-600 hover:bg-green-700 text-white py-2 px-4 rounded flex items-center',
+                        onClick: exportFeedback
+                      }, [
+                        'Export Feedback',
+                        (loading && React.createElement('span', { className: 'spinner ml-2' }))
+                      ])
+                    ]
+                  ),
+                  (feedbackMessage && React.createElement('p', { className: feedbackMessage.includes('Error') ? 'error mt-2' : 'success mt-2' }, feedbackMessage))
+                ]
+              )
+            )),
+            // Theme Toggle
+            React.createElement(
+              'div',
+              { className: 'theme-toggle' },
+              React.createElement('button', {
+                className: 'p-2 rounded-full bg-transparent',
+                onClick: toggleTheme
+              }, [
+                React.createElement('svg', {
+                  className: 'sun-icon',
+                  viewBox: '0 0 24 24',
+                  fill: 'none',
+                  stroke: theme === 'light' ? '#1f2937' : '#e6edf3',
+                  strokeWidth: '2'
+                }, [
+                  React.createElement('circle', { cx: '12', cy: '12', r: '5' }),
+                  React.createElement('line', { x1: '12', y1: '1', x2: '12', y2: '3' }),
+                  React.createElement('line', { x1: '12', y1: '21', x2: '12', y2: '23' }),
+                  React.createElement('line', { x1: '4.22', y1: '4.22', x2: '5.64', y2: '5.64' }),
+                  React.createElement('line', { x1: '18.36', y1: '18.36', x2: '19.78', y2: '19.78' }),
+                  React.createElement('line', { x1: '1', y1: '12', x2: '3', y2: '12' }),
+                  React.createElement('line', { x1: '21', y1: '12', x2: '23', y2: '12' }),
+                  React.createElement('line', { x1: '4.22', y1: '19.78', x2: '5.64', y2: '18.36' }),
+                  React.createElement('line', { x1: '18.36', y1: '5.64', x2: '19.78', y2: '4.22' })
+                ])
+              ])
+            ),
+            // Main Content
+            (user ? React.createElement(
+              'div',
+              { className: 'hero flex flex-col items-center py-16 px-6 max-w-4xl mx-auto' },
+              [
+                React.createElement('h2', { className: 'text-5xl font-extrabold mb-8 sm:text-4xl text-center' }, 'Chapter 18: Instance and Class Variables'),
+                React.createElement('p', { className: 'text-xl mb-8 text-gray-600 dark:text-gray-300 text-center' }, 'Welcome to Chapter 18 of DPyLearn! In this chapter, we’ll explore instance and class variables in Python. Learn their differences, use cases, and build three mini-projects. Try an interactive company demo and test your knowledge with a quiz. Let’s dive into OOP!'),
+                // Instance and Class Variables
+                React.createElement('h3', { className: 'text-3xl font-semibold mt-12 mb-4' }, 'Instance and Class Variables'),
+                React.createElement('p', { className: 'text-lg mb-6 text-gray-600 dark:text-gray-300' }, 'Instance variables are unique to each object, defined in `__init__` with `self`. Class variables are shared across all instances, defined in the class body. Here’s an example:'),
+                React.createElement('div', { className: 'flex items-start mb-6' }, [
+                  React.createElement('pre', { className: 'code-block' }, 
+                    'class Dog:\n' +
+                    '    species = "Canis familiaris"  # Class variable\n' +
+                    '    def __init__(self, name, age):\n' +
+                    '        self.name = name  # Instance variable\n' +
+                    '        self.age = age    # Instance variable\n' +
+                    '    def get_info(self):\n' +
+                    '        return f"{self.name} is a {Dog.species}, age {self.age}."\n' +
+                    'dog1 = Dog("Buddy", 3)\n' +
+                    'dog2 = Dog("Max", 5)\n' +
+                    'print(dog1.get_info())  # Buddy is a Canis familiaris, age 3.\n' +
+                    'print(dog2.get_info())  # Max is a Canis familiaris, age 5.\n' +
+                    'Dog.species = "Canis lupus"\n' +
+                    'print(dog1.get_info())  # Buddy is a Canis lupus, age 3.'
+                  ),
+                  React.createElement('button', {
+                    className: 'btn bg-gray-600 hover:bg-gray-700 text-white copy-btn',
+                    onClick: () => copyCode(
+                      'class Dog:\n' +
+                      '    species = "Canis familiaris"  # Class variable\n' +
+                      '    def __init__(self, name, age):\n' +
+                      '        self.name = name  # Instance variable\n' +
+                      '        self.age = age    # Instance variable\n' +
+                      '    def get_info(self):\n' +
+                      '        return f"{self.name} is a {Dog.species}, age {self.age}."\n' +
+                      'dog1 = Dog("Buddy", 3)\n' +
+                      'dog2 = Dog("Max", 5)\n' +
+                      'print(dog1.get_info())  # Buddy is a Canis familiaris, age 3.\n' +
+                      'print(dog2.get_info())  # Max is a Canis familiaris, age 5.\n' +
+                      'Dog.species = "Canis lupus"\n' +
+                      'print(dog1.get_info())  # Buddy is a Canis lupus, age 3.'
+                    )
+                  }, 'Copy Code')
+                ]),
+                React.createElement('p', { className: 'text-lg mb-6 text-gray-600 dark:text-gray-300' }, '`name` and `age` are instance variables, unique to `dog1` and `dog2`. `species` is a class variable, shared by all `Dog` objects. Changing `Dog.species` affects all instances.'),
+                // Interactive Company Demo
+                React.createElement('h3', { className: 'text-3xl font-semibold mt-12 mb-4' }, 'Interactive Company Demo'),
+                React.createElement('p', { className: 'text-lg mb-6 text-gray-600 dark:text-gray-300' }, 'Try a `Company` class in your browser to manage employees and update the company name:'),
+                React.createElement(
+                  'div',
+                  { className: 'company-container mb-6' },
+                  [
+                    React.createElement('div', { className: 'flex flex-col space-y-4' }, [
+                      React.createElement('input', {
+                        type: 'text',
+                        className: 'input-field p-2 bg-gray-100 dark:bg-gray-800 rounded border border-gray-300 dark:border-gray-600',
+                        placeholder: 'Enter employee name',
+                        value: employeeName,
+                        onChange: e => setEmployeeName(e.target.value)
+                      }),
+                      React.createElement('input', {
+                        type: 'number',
+                        className: 'input-field p-2 bg-gray-100 dark:bg-gray-800 rounded border border-gray-300 dark:border-gray-600',
+                        placeholder: 'Enter salary',
+                        value: employeeSalary,
+                        onChange: e => setEmployeeSalary(e.target.value)
+                      }),
+                      React.createElement('input', {
+                        type: 'text',
+                        className: 'input-field p-2 bg-gray-100 dark:bg-gray-800 rounded border border-gray-300 dark:border-gray-600',
+                        placeholder: 'Enter company name',
+                        value: companyName,
+                        onChange: e => setCompanyName(e.target.value)
+                      }),
+                      React.createElement(
+                        'select',
+                        {
+                          className: 'input-field p-2 bg-gray-100 dark:bg-gray-800 rounded border border-gray-300 dark:border-gray-600',
+                          value: employeeAction,
+                          onChange: e => setEmployeeAction(e.target.value)
+                        },
+                        ['add_employee', 'update_company_name'].map(action => (
+                          React.createElement('option', { key: action, value: action }, action === 'add_employee' ? 'Add Employee' : 'Update Company Name')
+                        ))
+                      ),
+                      React.createElement('button', {
+                        className: 'btn bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded',
+                        onClick: manageEmployee
+                      }, 'Execute'),
+                      (employeeResult && React.createElement('p', { className: 'success mt-2' }, employeeResult)),
+                      (employeeError && React.createElement('p', { className: 'error mt-2' }, employeeError))
+                    ])
+                  ]
+                ),
+                React.createElement('p', { className: 'text-lg mb-6 text-gray-600 dark:text-gray-300' }, 'Enter an employee name, salary, and company name, then add an employee or update the company name to see the result.'),
+                // Mini-Project 1: Employee Manager
+                React.createElement('h3', { className: 'text-3xl font-semibold mt-12 mb-4' }, 'Mini-Project 1: Employee Manager'),
+                React.createElement('p', { className: 'text-lg mb-6 text-gray-600 dark:text-gray-300' }, 'This project creates a `CompanyEmployee` class with instance and class variables:'),
+                React.createElement('div', { className: 'flex items-start mb-6' }, [
+                  React.createElement('pre', { className: 'code-block' }, 
+                    'class CompanyEmployee:\n' +
+                    '    company_name = "TechCorp"  # Class variable\n' +
+                    '    employee_count = 0         # Class variable\n' +
+                    '    def __init__(self, name, salary):\n' +
+                    '        self.name = name       # Instance variable\n' +
+                    '        try:\n' +
+                    '            self.salary = float(salary)  # Instance variable\n' +
+                    '            if self.salary < 0:\n' +
+                    '                raise ValueError("Salary cannot be negative.")\n' +
+                    '            CompanyEmployee.employee_count += 1\n' +
+                    '        except ValueError as e:\n' +
+                    '            raise ValueError(f"Invalid salary: {str(e)}")\n' +
+                    '    def get_details(self):\n' +
+                    '        return f"Employee: {self.name}, Salary: {self.salary:.2f}, Company: {CompanyEmployee.company_name}"\n' +
+                    'def main():\n' +
+                    '    emp1 = CompanyEmployee("Alice", 50000)\n' +
+                    '    emp2 = CompanyEmployee("Bob", 60000)\n' +
+                    '    print(emp1.get_details())\n' +
+                    '    print(emp2.get_details())\n' +
+                    '    print(f"Total employees: {CompanyEmployee.employee_count}")\n' +
+                    'main()'
+                  ),
+                  React.createElement('button', {
+                    className: 'btn bg-gray-600 hover:bg-gray-700 text-white copy-btn',
+                    onClick: () => copyCode(
+                      'class CompanyEmployee:\n' +
+                      '    company_name = "TechCorp"  # Class variable\n' +
+                      '    employee_count = 0         # Class variable\n' +
+                      '    def __init__(self, name, salary):\n' +
+                      '        self.name = name       # Instance variable\n' +
+                      '        try:\n' +
+                      '            self.salary = float(salary)  # Instance variable\n' +
+                      '            if self.salary < 0:\n' +
+                      '                raise ValueError("Salary cannot be negative.")\n' +
+                      '            CompanyEmployee.employee_count += 1\n' +
+                      '        except ValueError as e:\n' +
+                      '            raise ValueError(f"Invalid salary: {str(e)}")\n' +
+                      '    def get_details(self):\n' +
+                      '        return f"Employee: {self.name}, Salary: {self.salary:.2f}, Company: {CompanyEmployee.company_name}"\n' +
+                      'def main():\n' +
+                      '    emp1 = CompanyEmployee("Alice", 50000)\n' +
+                      '    emp2 = CompanyEmployee("Bob", 60000)\n' +
+                      '    print(emp1.get_details())\n' +
+                      '    print(emp2.get_details())\n' +
+                      '    print(f"Total employees: {CompanyEmployee.employee_count}")\n' +
+                      'main()'
+                    )
+                  }, 'Copy Code')
+                ]),
+                React.createElement('p', { className: 'text-lg mb-6 text-gray-600 dark:text-gray-300' }, 'Save as `employee_manager.py`. Run locally to get "Employee: Alice, Salary: 50000.00, Company: TechCorp", "Employee: Bob, Salary: 60000.00, Company: TechCorp", and "Total employees: 2".'),
+                // Mini-Project 2: Inventory Counter
+                React.createElement('h3', { className: 'text-3xl font-semibold mt-12 mb-4' }, 'Mini-Project 2: Inventory Counter'),
+                React.createElement('p', { className: 'text-lg mb-6 text-gray-600 dark:text-gray-300' }, 'This project creates an `Inventory` class to track items sold:'),
+                React.createElement('div', { className: 'flex items-start mb-6' }, [
+                  React.createElement('pre', { className: 'code-block' }, 
+                    'class Inventory:\n' +
+                    '    total_items_sold = 0  # Class variable\n' +
+                    '    def __init__(self, item_name, quantity):\n' +
+                    '        self.item_name = item_name  # Instance variable\n' +
+                    '        try:\n' +
+                    '            self.quantity = int(quantity)  # Instance variable\n' +
+                    '            if self.quantity < 0:\n' +
+                    '                raise ValueError("Quantity cannot be negative.")\n' +
+                    '        except ValueError as e:\n' +
+                    '            raise ValueError(f"Invalid quantity: {str(e)}")\n' +
+                    '    def sell(self, amount):\n' +
+                    '        try:\n' +
+                    '            amount = int(amount)\n' +
+                    '            if amount < 0:\n' +
+                    '                raise ValueError("Sell amount must be non-negative.")\n' +
+                    '            if amount > self.quantity:\n' +
+                    '                raise ValueError(f"Not enough {self.item_name} in stock.")\n' +
+                    '            self.quantity -= amount\n' +
+                    '            Inventory.total_items_sold += amount\n' +
+                    '            return f"Sold {amount} of {self.item_name}. Remaining: {self.quantity}"\n' +
+                    '        except ValueError as e:\n' +
+                    '            return f"Error: {str(e)}"\n' +
+                    'def main():\n' +
+                    '    item1 = Inventory("Laptop", 10)\n' +
+                    '    item2 = Inventory("Phone", 20)\n' +
+                    '    print(item1.sell(5))\n' +
+                    '    print(item2.sell(10))\n' +
+                    '    print(f"Total items sold: {Inventory.total_items_sold}")\n' +
+                    'main()'
+                  ),
+                  React.createElement('button', {
+                    className: 'btn bg-gray-600 hover:bg-gray-700 text-white copy-btn',
+                    onClick: () => copyCode(
+                      'class Inventory:\n' +
+                      '    total_items_sold = 0  # Class variable\n' +
+                      '    def __init__(self, item_name, quantity):\n' +
+                      '        self.item_name = item_name  # Instance variable\n' +
+                      '        try:\n' +
+                      '            self.quantity = int(quantity)  # Instance variable\n' +
+                      '            if self.quantity < 0:\n' +
+                      '                raise ValueError("Quantity cannot be negative.")\n' +
+                      '        except ValueError as e:\n' +
+                      '            raise ValueError(f"Invalid quantity: {str(e)}")\n' +
+                      '    def sell(self, amount):\n' +
+                      '        try:\n' +
+                      '            amount = int(amount)\n' +
+                      '            if amount < 0:\n' +
+                      '                raise ValueError("Sell amount must be non-negative.")\n' +
+                      '            if amount > self.quantity:\n' +
+                      '                raise ValueError(f"Not enough {self.item_name} in stock.")\n' +
+                      '            self.quantity -= amount\n' +
+                      '            Inventory.total_items_sold += amount\n' +
+                      '            return f"Sold {amount} of {self.item_name}. Remaining: {self.quantity}"\n' +
+                      '        except ValueError as e:\n' +
+                      '            return f"Error: {str(e)}"\n' +
+                      'def main():\n' +
+                      '    item1 = Inventory("Laptop", 10)\n' +
+                      '    item2 = Inventory("Phone", 20)\n' +
+                      '    print(item1.sell(5))\n' +
+                      '    print(item2.sell(10))\n' +
+                      '    print(f"Total items sold: {Inventory.total_items_sold}")\n' +
+                      'main()'
+                    )
+                  }, 'Copy Code')
+                ]),
+                React.createElement('p', { className: 'text-lg mb-6 text-gray-600 dark:text-gray-300' }, 'Save as `inventory_counter.py`. Run locally to get "Sold 5 of Laptop. Remaining: 5", "Sold 10 of Phone. Remaining: 10", and "Total items sold: 15".'),
+                // Mini-Project 3: Car Dealership
+                React.createElement('h3', { className: 'text-3xl font-semibold mt-12 mb-4' }, 'Mini-Project 3: Car Dealership'),
+                React.createElement('p', { className: 'text-lg mb-6 text-gray-600 dark:text-gray-300' }, 'This project creates a `Car` class with sales logging (run locally):'),
+                React.createElement('div', { className: 'flex items-start mb-6' }, [
+                  React.createElement('pre', { className: 'code-block' }, 
+                    'class Car:\n' +
+                    '    dealership_name = "AutoWorld"  # Class variable\n' +
+                    '    total_sales = 0               # Class variable\n' +
+                    '    def __init__(self, model, price):\n' +
+                    '        self.model = model        # Instance variable\n' +
+                    '        try:\n' +
+                    '            self.price = float(price)  # Instance variable\n' +
+                    '            if self.price < 0:\n' +
+                    '                raise ValueError("Price cannot be negative.")\n' +
+                    '        except ValueError as e:\n' +
+                    '            raise ValueError(f"Invalid price: {str(e)}")\n' +
+                    '    def sell(self):\n' +
+                    '        Car.total_sales += 1\n' +
+                    '        try:\n' +
+                    '            with open("sales_log.txt", "a") as f:\n' +
+                    '                f.write(f"Sold {self.model} for {self.price:.2f} at {Car.dealership_name}.\\n")\n' +
+                    '            return f"Sold {self.model} for {self.price:.2f}. Total sales: {Car.total_sales}"\n' +
+                    '        except Exception as e:\n' +
+                    '            return f"Error: {str(e)}"\n' +
+                    'def main():\n' +
+                    '    car1 = Car("Sedan", 25000)\n' +
+                    '    car2 = Car("SUV", 40000)\n' +
+                    '    print(car1.sell())\n' +
+                    '    print(car2.sell())\n' +
+                    '    Car.dealership_name = "MegaMotors"\n' +
+                    '    print(car1.sell())\n' +
+                    'main()'
+                  ),
+                  React.createElement('button', {
+                    className: 'btn bg-gray-600 hover:bg-gray-700 text-white copy-btn',
+                    onClick: () => copyCode(
+                      'class Car:\n' +
+                      '    dealership_name = "AutoWorld"  # Class variable\n' +
+                      '    total_sales = 0               # Class variable\n' +
+                      '    def __init__(self, model, price):\n' +
+                      '        self.model = model        # Instance variable\n' +
+                      '        try:\n' +
+                      '            self.price = float(price)  # Instance variable\n' +
+                      '            if self.price < 0:\n' +
+                      '                raise ValueError("Price cannot be negative.")\n' +
+                      '        except ValueError as e:\n' +
+                      '            raise ValueError(f"Invalid price: {str(e)}")\n' +
+                      '    def sell(self):\n' +
+                      '        Car.total_sales += 1\n' +
+                      '        try:\n' +
+                      '            with open("sales_log.txt", "a") as f:\n' +
+                      '                f.write(f"Sold {self.model} for {self.price:.2f} at {Car.dealership_name}.\\n")\n' +
+                      '            return f"Sold {self.model} for {self.price:.2f}. Total sales: {Car.total_sales}"\n' +
+                      '        except Exception as e:\n' +
+                      '            return f"Error: {str(e)}"\n' +
+                      'def main():\n' +
+                      '    car1 = Car("Sedan", 25000)\n' +
+                      '    car2 = Car("SUV", 40000)\n' +
+                      '    print(car1.sell())\n' +
+                      '    print(car2.sell())\n' +
+                      '    Car.dealership_name = "MegaMotors"\n' +
+                      '    print(car1.sell())\n' +
+                      'main()'
+                    )
+                  }, 'Copy Code')
+                ]),
+                React.createElement('p', { className: 'text-lg mb-6 text-gray-600 dark:text-gray-300' }, 'Save as `car_dealership.py`. Run locally to get "Sold Sedan for 25000.00. Total sales: 1", "Sold SUV for 40000.00. Total sales: 2", and "Sold Sedan for 25000.00. Total sales: 3". Check `sales_log.txt` for logs.'),
+                // Quiz
+                React.createElement('h3', { className: 'text-3xl font-semibold mt-12 mb-4' }, 'Quiz: Test Your Knowledge'),
+                React.createElement('p', { className: 'text-lg mb-6 text-gray-600 dark:text-gray-300' }, 'Test your understanding of instance and class variables with these three questions:'),
+                React.createElement(
+                  'div',
+                  { className: 'mb-6' },
+                  quizQuestions.map(q => (
+                    React.createElement(
+                      'div',
+                      { key: q.id, className: 'mb-6' },
+                      [
+                        React.createElement('p', { className: 'text-lg font-semibold mb-2' }, `Question ${q.id}: ${q.question}`),
+                        q.options.map(option => (
+                          React.createElement(
+                            'div',
+                            { key: option, className: 'quiz-option mb-2' },
+                            [
+                              React.createElement('input', {
+                                type: 'radio',
+                                name: `question-${q.id}`,
+                                value: option,
+                                checked: quizAnswers[q.id] === option,
+                                onChange: () => setQuizAnswers({ ...quizAnswers, [q.id]: option }),
+                                disabled: quizSubmitted,
+                                className: 'mr-2'
+                              }),
+                              React.createElement('span', { className: 'text-lg text-gray-600 dark:text-gray-300' }, option)
+                            ]
+                          )
+                        ))
+                      ]
+                    )
+                  ))
+                ),
+                (!quizSubmitted && React.createElement('button', {
+                  className: 'btn bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded mt-4',
+                  onClick: handleQuizSubmit,
+                  disabled: Object.keys(quizAnswers).length !== quizQuestions.length
+                }, 'Submit Quiz')),
+                (quizSubmitted && React.createElement('p', { className: 'success mt-4' }, `Your score: ${quizScore}% (${Math.round(quizScore * quizQuestions.length / 100)}/${quizQuestions.length})`)),
+                // What’s Next?
+                React.createElement('h3', { className: 'text-3xl font-semibold mt-12 mb-4' }, 'What’s Next?'),
+                React.createElement('p', { className: 'text-lg mb-6 text-gray-600 dark:text-gray-300' }, 'Great job mastering instance and class variables! In Chapter 19, you’ll explore advanced OOP concepts like inheritance or build a larger project. Share your feedback, revisit Chapter 17, or move forward!'),
+                React.createElement('div', { className: 'flex flex-wrap gap-4' }, [
+                  React.createElement('button', {
+                    className: 'btn bg-blue-600 hover:bg-blue-700 text-white py-3 px-6 rounded-lg text-lg mt-4',
+                    onClick: () => setShowFeedback(true)
+                  }, 'Share Feedback'),
+                  React.createElement('a', {
+                    href: './index.html',
+                    className: 'btn bg-gray-600 hover:bg-gray-700 text-white py-3 px-6 rounded-lg text-lg mt-4'
+                  }, 'Back to Home'),
+                  React.createElement('a', {
+                    href: './chapter17.html',
+                    className: 'btn bg-gray-600 hover:bg-gray-700 text-white py-3 px-6 rounded-lg text-lg mt-4'
+                  }, 'Previous: Chapter 17'),
+                  React.createElement('a', {
+                    href: './chapter19.html',
+                    className: 'btn bg-blue-600 hover:bg-blue-700 text-white py-3 px-6 rounded-lg text-lg mt-4'
+                  }, 'Next: Chapter 19')
+                ]),
+                (copyMessage && React.createElement('p', { className: copyMessage.includes('Failed') ? 'error mt-4' : 'success mt-4' }, copyMessage)),
+                (feedbackMessage && React.createElement('p', { className: feedbackMessage.includes('Error') ? 'error mt-4' : 'success mt-4' }, feedbackMessage))
+              ]
+            ) : React.createElement(
+              'div',
+              { className: 'hero flex flex-col items-center justify-center text-center py-16 px-6' },
+              [
+                React.createElement('h2', { className: 'text-5xl font-extrabold mb-6 sm:text-4xl' }, 'Access Restricted'),
+                React.createElement('p', { className: 'text-lg mb-6 text-gray-600 dark:text-gray-300' }, 'Please sign in to access Chapter 18. Redirecting to the home page...'),
+                (feedbackMessage && React.createElement('p', { className: 'error mt-4' }, feedbackMessage))
+              ]
+            )),
+            // Footer
+            React.createElement(
+              'footer',
+              { className: 'py-6 px-6 text-center bg-gray-100 dark:bg-gray-900' },
+              React.createElement('p', { className: 'text-gray-600 dark:text-gray-300' }, '© 2025 DPyLearn by Dharmik. Built with ❤️ for Python learners.')
+            )
+          ]
+        );
+      } catch (e) {
+        console.error('Render error:', e);
+        return React.createElement('div', { className: 'error' }, `Error loading page: ${e.message}. Please check the console for details.`);
+      }
+    };
+
+    try {
+      const root = ReactDOM.createRoot(document.getElementById('root'));
+      root.render(React.createElement(Chapter18));
+    } catch (e) {
+      console.error('ReactDOM render error:', e);
+      document.getElementById('root').innerHTML = '<div class="error">Error rendering page: ' + e.message + '. Please check the console.</div>';
+    }
+  </script>
+</body>
+</html>
